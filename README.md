@@ -1,4 +1,4 @@
-simulator
+Bus Network Simulator
 =========
 
-Simulator for CSLP
+This is the bus network simulator implementation in Python.
