@@ -15,7 +15,7 @@ STOP_TIME_RX = r'^stop time {float}$'.format(float=FLOAT_RX),
 IGNORE_WARN_RX = r'^ignore warnings$',
 OPTIMIZE_RX = r'^optimise parameters$',
 NEWLINE_RX = r'^\n$',
-COMMENT_RX = r'^# .* \n$',
+COMMENT_RX = r'^#.*\n$',
 
 
 class InputParser:
@@ -74,5 +74,7 @@ class InputParser:
         """
         match = re.match(pattern, string)
         self.line_params = match.groupdict()
+        if not self.line_params:
+            self.line_params = match.group()
         return match
 
