@@ -1,0 +1,5 @@
+venv
+*.pyc
+*.sublime-project
+*.sublime-workspace
+*.codeintel
