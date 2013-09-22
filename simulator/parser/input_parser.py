@@ -19,6 +19,9 @@ COMMENT_RX = r'^#.*\n$',
 
 
 class InputParser:
+    """
+    Object that is responsible for creating the network from the input file.
+    """
 
     def __init__(self, filename=None):
         self.filename = filename
