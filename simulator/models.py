@@ -1,22 +1,28 @@
-from events import BusDeparture, BusArrival
-from util import log
+from simulator.events import BusDeparture, BusArrival
+from simulator.util import log
+
+from collections import defaultdict
 
 
 class Bus:
 
-    def __init__(self, route_id, bus_id, capacity, stop):
+    def __init__(self, route_id, bus_id, capacity, stop_id):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
 
         Also initialize the number of passengers to 0.
         """
-        self.route_id = int(route_id)
-        self.bus_id = int(bus_id)
+        self.uid = "{0}.{1}".format(route_id, bus_id)
         self.capacity = int(capacity)
         self.passengers = []
-        self.stop = stop
+        self.stop_id = stop_id
         self.in_motion = False
+
+    def board_passenger(self, passenger):
+        """
+        """
+        self.passengers.append(passenger)
 
     def ready_for_departure(self):
         """
@@ -33,17 +39,19 @@ class Bus:
         """
         pass
 
-    def disembarking_passengers():
+    def disembarking_passengers(self):
         """
         Return passengers that have arrived at their destination and want to disembark.
         """
-        return [pax for pax in passengers if pax.destination == self.stop]
+        return [pax for pax in self.passengers if pax.destination == self.stop_id]
 
     def full_capacity(self):
         """
         Returns true if the number of passengers is equal to the capacity.
         """
-        return len(self.passengers) == self.capacity
+        if len(self.passengers) <= self.capacity:
+            return len(self.passengers) == self.capacity
+        raise Exception('More passengers than allowed!')
 
     def no_disembarks(self):
         """
@@ -53,14 +61,17 @@ class Bus:
         return self.disembarking_passengers() == []
 
     def __repr__(self):
-        return '{0}.{1}'.format(self.route_id, self.bus_id)
+        return self.uid
 
 
 class Passenger:
 
     def __init__(self, origin, destination):
-        stop = network.get_stop(origin)
-        stop.enqueue_passenger(self)
+        self.origin = origin
+        self.destination = destination
+        # TODO: Below really should not be handled by the passenger
+        # stop = network.get_stop(origin)
+        # stop.enqueue_passenger(self)
 
 
 class Road:
@@ -131,17 +142,17 @@ class Network:
         Represent everything using sets as there is no reason for duplicates.
         """
         # TODO: Maybe use matrix when dense and list when sparse?
-        self.roads = {
-            # <stop_id> : {(<stop_id>, <rate>), *}
-            # 1: {(2, 0.6), (3, 0.4)},
-        }
+        self.roads = defaultdict(set)
+            # <stop_id> : {(<road>, )*}
         self.routes = {
-            # <route_id> : {
-                # "buses": [<bus>, *],
-                # "stops": [<stop>, *],
-                # "capacity": <capacity>
-            # }
+            # <route_id> : <route>
         }
+
+    def get_route_by_id(self, route_id):
+        """
+        Return route given an id.
+        """
+        return self.routes[route_id]
 
     def add_route(self, route_id, stop_ids, bus_count, bus_capacity):
         """
@@ -149,8 +160,8 @@ class Network:
         to create the stops since for a valid network there will always
         be roads specifying them.
         """
-        # route = Route(route_id, stop_ids, bus_count, bus_capacity)
-        self.routes[route_id] = stop_ids
+        route = Route(route_id, stop_ids, bus_count, bus_capacity)
+        self.routes[route_id] = route
 
     def add_road(self, origin, destination, rate):
         """
