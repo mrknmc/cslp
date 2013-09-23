@@ -1,12 +1,24 @@
-
+from simulator.parser import InputParser
 
 class Simulator:
 
-    def __init__(self, max_time):
+    def __init__(self, max_time, filename):
+        """
+        Initialize the simulator with some default values.
+        """
         self.max_time = max_time
         self.time = 0.0
+        self.create_network(filename)  # TODO: maybe a bad idea?
         # self.network = PARSE A FILE
+        # self.board_rate = PARSE A FILE
+        # self.disembark_rate
 
+    def create_network(self, filename):
+        """
+        Create a network from the passed in input file.
+        """
+        parser = InputParser()
+        self.network = parser.parse_file(filename)
 
     def possible_events(self):
         """
@@ -18,21 +30,51 @@ class Simulator:
 
         Get a characted creation.
         """
+        # TODO: Maybe move this function into Network object
         for route, route_dict in self.network.routes.iteritems():
-            dep_buses = self.ready_buses(route_dict["buses"])
+            buses = route_dict["buses"]
+            dep_buses = self.departure_ready_buses(buses)  # all the buses that want to depart from their bus stop
+            arr_buses = self.arrival_ready_buses(buses)  # all the buses that want to arrive to their next bus stop
+            board_pax = self.boarding_passengers(stops)  # all the passengers that want to board a bus
+            exit_pax = self.disembarking_passengers(buses)  # all the passengers that want to disembark their bus
+            # TODO: don't forget a passenger creation here!
+
             # handle route_dict["stops"]
 
-    def ready_buses(self, buses):
+    def departure_ready_buses(self, buses):
         """
         Return buses that are ready for departure.
         """
-        # return filter(lambda b: b.read_for_departure(), buses)
-        return [bus for bus in buses if bus.read_for_departure()]
+        # return filter(lambda b: b.ready_for_departure(), buses)
+        return [bus for bus in buses if bus.ready_for_departure()]
 
-    def ready_stops(self):
-        pass
+    def disembarking_passengers(self, buses):
+        """
+        Return passengers that are at their destination station.
+        """
+        passengers = []
+        for bus in buses:
+            if not bus.in_motion:
+                passengers += bus.disembarking_passengers()
+
+        return passengers
+
+    def boarding_passengers(self, stops):
+        """
+        Return passengers that are at their origin station and want to board the bus.
+        """
+        board_passengers = []
+        for stop in stops:
+            # TODO: work-out how to satisfy a passenger's destination
+            passengers = [pax for pax in passengers if stop.can_board(pax)]
+            board_passengers.append(passengers)
+
+        return board_passengers
 
     def run(self):
+        """
+        Run the simulation until world explodes.
+        """
         while self.time <= self.max_time:
             pass  # From the current state calculate the set of events which may occur total rate ← the sum of the rates of those events
             pass  # delay ← choose a delay based on the total rate
