@@ -4,21 +4,26 @@ class Event:
     """
     Parent Event class.
     """
-    pass
+
+    def __init__(self, simulator):
+        # GET TIME
+        pass
 
 
-class BusArival(Event):
+class BusArrival(Event):
     """
     Event that represents a bus arriving at a certain bus stop.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, bus, stop):
+        self.bus = bus
+        self.stop = stop
 
     def __repr__(self):
-        return 'Bus {bus_id} arrives at stop {stop_id} at time {time}'.format(
-            bus_id=self.bus_id,
-            stop_id=self.stop_id
+        return 'Bus {bus} arrives at stop {stop} at time {time}'.format(
+            bus=self.bus,
+            stop=self.stop,
+            time=self.time
         )
 
 
@@ -27,13 +32,15 @@ class BusDeparture(Event):
     Event that represents a bus departing a certain bus stop.
     """
 
-    def __init__(self, bus):
-        pass
+    def __init__(self, bus, stop):
+        super()
+        self.bus = bus
+        self.stop = stop
 
     def __repr__(self):
-        return 'Bus {bus_id} leaves stop {stop_id} at time {time}'.format(
-            bus_id=self.bus_id,
-            stop_id=self,
+        return 'Bus {bus} leaves stop {stop} at time {time}'.format(
+            bus=self.bus,
+            stop=self.stop,
             time=self.time
         )
 
@@ -51,12 +58,12 @@ class PassengerBoarded(Event):
         # set TIME
 
     def __repr__(self):
-        return 'Passenger boards bus {bus_id} at stop {stop_id} with \
-        destination {destination} at time {time}'.format(
-            bus_id=self.bus_id,
-            stop_id=self.stop_id,
-            self.destination,
-            self.time
+        return 'Passenger boards bus {bus} at stop {stop} with destination {dest} \
+        at time {time}'.format(
+            bus=self.bus,
+            stop=self.stop,
+            destination=self.destination,
+            time=self.time
         )
 
 
@@ -66,14 +73,14 @@ class PassengerDisembarked(Event):
     """
 
     def __init__(self, bus):
-        # self.bus_id = bus.id
-        self.stop_id = bus.current_stop_id()
+        self.bus = bus
+        self.stop = bus.current_stop()
         # set TIME
 
     def __repr__(self):
-        return 'Passenger disembarks bus {bus_id} at stop {stop_id} at time {time}'.format(
-            bus_id=self.bus_id,
-            stop_id=self.stop_id,
+        return 'Passenger disembarks bus {bus} at stop {stop} at time {time}'.format(
+            bus=self.bus,
+            stop=self.stop,
             time=self.time
         )
 
@@ -89,9 +96,9 @@ class PassengerCreation(Event):
         # set TIME
 
     def __repr__(self):
-        return 'A new passenger enters at stop {origin} with destination \
-        {destination} at time {time}'.format(
+        return 'A new passenger enters at stop {origin} with destination {dest} \
+        at time {time}'.format(
             origin=self.origin,
-            destination=self.destination,
+            dest=self.destination,
             time=self.time
         )
