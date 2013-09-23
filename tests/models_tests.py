@@ -16,6 +16,7 @@ class TestBus(unittest.TestCase):
 
     def test_id(self):
         """
+        Test that the bus id is set correctly.
         """
         bus = Bus(12, 4, 20, 4)
         self.assertEqual(bus.uid, '12.4')
@@ -24,15 +25,16 @@ class TestBus(unittest.TestCase):
         """
 
         """
-        buses = (
-            Bus(1, 0, 20, 2),
-            Bus(1, 0, 20, 2),
-        )
+        bus = Bus(1, 0, 20, 2)
+
+        bus.in_motion = False
+        bus.passengers = [Passenger(4, 5)] * 20
+        self.assertTrue(bus.ready_for_departure())
         # TODO: finish this
 
     def test_disembarking_passengers(self):
         """
-
+        Test that there are passengers who want to disembark.
         """
         bus1 = Bus(12, 4, 20, 5)
         bus2 = Bus(12, 4, 20, 2)
@@ -58,6 +60,9 @@ class TestBus(unittest.TestCase):
         self.assertEqual(exit_pax, [])
 
     def test_full_capacity(self):
+        """
+        Test that the capacity is full.
+        """
         bus = Bus(12, 4, 20, 5)
 
         bus.passengers = [Passenger(4, 5)] * 19
@@ -70,6 +75,9 @@ class TestBus(unittest.TestCase):
         self.assertRaises(Exception, bus.full_capacity)
 
     def test_no_disembarks(self):
+        """
+        Test that no one wants to disembark.
+        """
         bus1 = Bus(12, 4, 20, 5)
         bus2 = Bus(12, 4, 20, 2)
 
