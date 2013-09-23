@@ -33,6 +33,12 @@ class Bus:
         """
         pass
 
+    def disembarking_passengers():
+        """
+        Return passengers that have arrived at their destination and want to disembark.
+        """
+        return [pax for pax in passengers if pax.destination == self.stop]
+
     def full_capacity(self):
         """
         Returns true if the number of passengers is equal to the capacity.
@@ -44,14 +50,17 @@ class Bus:
         Returns true if there are no passengers who want to disembark at the current bus stop.
         """
         # return filter(lambda p: p.destination == self.stop, self.passengers) == []
-        return [pax for pax in passengers if pax.destination == self.stop] == []
+        return self.disembarking_passengers() == []
 
     def __repr__(self):
         return '{0}.{1}'.format(self.route_id, self.bus_id)
 
 
-# class Passenger:
-    # pass
+class Passenger:
+
+    def __init__(self, origin, destination):
+        stop = network.get_stop(origin)
+        stop.enqueue_passenger(self)
 
 
 class Road:
@@ -82,23 +91,31 @@ class Stop:
 
     def __init__(self, stop_id):
         self.stop_id = stop_id
-        self.queue = []
+        self.bus_queue = []
+        self.passengers = []
 
-    def enqueue(self, bus):
+    def enqueue_bus(self, bus):
         """
-        A new bus arrives to the queue
+        A new bus arrives to the queue.
         """
-        self.queue.append(bus)
+        self.bus_queue.append(bus)
         event = BusArrival(bus, self)
         log(event)
 
-    def dequeue(self):
+    def dequeue_bus(self):
         """
-        The first bus departs from the queue
+        The first bus departs from the queue.
         """
-        bus = self.queue.pop(0)
+        bus = self.bus_queue.pop(0)
         event = BusDeparture(bus, self)
         log(event)
+
+    def enqueue_passenger(self, passenger):
+        """
+        A new passenger has arrived at the stop.
+        """
+        self.passengers.append(passenger)
+        # MAYBE log the passenger creation event here?
 
     def __repr__(self):
         return self.stop_id
@@ -121,13 +138,9 @@ class Network:
         self.routes = {
             # <route_id> : {
                 # "buses": [<bus>, *],
-                # "stops": [<stop_id>, *],
+                # "stops": [<stop>, *],
                 # "capacity": <capacity>
             # }
-        }
-        self.routes = {
-            # <route_id> : [<stop_id>, *]
-            # 2: [3, 5, 9],
         }
 
     def add_route(self, route_id, stop_ids, bus_count, bus_capacity):
