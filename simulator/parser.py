@@ -27,7 +27,7 @@ class InputParser:
         self.filename = filename
         self.network = Network()
 
-    def parseFile(self):
+    def parse_file(self):
         if self.filename is None:
             raise Exception("No input file specified!")
         with open(self.filename) as f:
@@ -35,7 +35,8 @@ class InputParser:
             for line in f:
                 self.parse_line(line.rstrip('\n'))  # get rid of newline
                 line_no += 1
-        # Finished parsing - do stuff
+        # TODO:Finished parsing - do stuff like validate
+        return self.network
 
     def parse_line(self, line):
         """
