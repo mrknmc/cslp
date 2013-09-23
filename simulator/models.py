@@ -4,7 +4,7 @@ from util import log
 
 class Bus:
 
-    def __init__(self, route_id, bus_id, capacity, stop_id):
+    def __init__(self, route_id, bus_id, capacity, stop):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
@@ -15,7 +15,36 @@ class Bus:
         self.bus_id = int(bus_id)
         self.capacity = int(capacity)
         self.passengers = []
-        self.next_stop = stop_id
+        self.stop = stop
+        self.in_motion = False
+
+    def ready_for_departure(self):
+        """
+        Bus is ready for departure when it's not in motion, no one wants to disembark the bus
+        and it has either full capacity or the bus stop has no passengers who want to board.
+        """
+        return (not self.in_motion) and \
+               (self.full_capacity() or self.stop.no_boarders()) and \
+               self.no_disembarks()
+
+    def ready_for_arrival(self):
+        """
+        Bus is ready for arrival when it's in motion.
+        """
+        pass
+
+    def full_capacity(self):
+        """
+        Returns true if the number of passengers is equal to the capacity.
+        """
+        return len(self.passengers) == self.capacity
+
+    def no_disembarks(self):
+        """
+        Returns true if there are no passengers who want to disembark at the current bus stop.
+        """
+        # return filter(lambda p: p.destination == self.stop, self.passengers) == []
+        return [pax for pax in passengers if pax.destination == self.stop] == []
 
     def __repr__(self):
         return '{0}.{1}'.format(self.route_id, self.bus_id)
@@ -86,8 +115,8 @@ class Network:
         """
         # TODO: Maybe use matrix when dense and list when sparse?
         self.roads = {
-            # <stop_id> : [(<stop_id>, <rate>), *]
-            # 1: [(2, 0.6), (3, 0.4)],
+            # <stop_id> : {(<stop_id>, <rate>), *}
+            # 1: {(2, 0.6), (3, 0.4)},
         }
         self.routes = {
             # <route_id> : {
@@ -115,7 +144,7 @@ class Network:
         Create a new road, its stops and add it to the network.
         """
         # road = Road(origin, destination, rate)
-        self.roads[origin] = destination, rate
+        self.roads[origin].add((destination, rate))
 
     def validate(self):
         """
