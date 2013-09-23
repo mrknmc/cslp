@@ -21,7 +21,7 @@ class BusArrival(Event):
     def __repr__(self):
         return 'Bus {bus} arrives at stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop
+            stop=self.stop,
             time=self.time
         )
 
