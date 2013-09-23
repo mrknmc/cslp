@@ -9,18 +9,20 @@ class Event:
         pass
 
 
-class BusArival(Event):
+class BusArrival(Event):
     """
     Event that represents a bus arriving at a certain bus stop.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, bus, stop):
+        self.bus = bus
+        self.stop = stop
 
     def __repr__(self):
         return 'Bus {bus} arrives at stop {stop} at time {time}'.format(
             bus=self.bus,
             stop=self.stop
+            time=self.time
         )
 
 
@@ -29,8 +31,10 @@ class BusDeparture(Event):
     Event that represents a bus departing a certain bus stop.
     """
 
-    def __init__(self, bus):
-        pass
+    def __init__(self, bus, stop):
+        super()
+        self.bus = bus
+        self.stop = stop
 
     def __repr__(self):
         return 'Bus {bus} leaves stop {stop} at time {time}'.format(
@@ -52,8 +56,8 @@ class PassengerBoarded(Event):
         self.destination = passenger.destination
 
     def __repr__(self):
-        return 'Passenger boards bus {bus} at stop {stop} with \
-        destination {destination} at time {time}'.format(
+        return 'Passenger boards bus {bus} at stop {stop} with destination \
+        {destination} at time {time}'.format(
             bus=self.bus,
             stop=self.stop,
             destination=self.destination,
@@ -68,7 +72,7 @@ class PassengerDisembarked(Event):
 
     def __init__(self, bus):
         self.bus = bus
-        self.stop_id = bus.current_stop_id()
+        self.stop = bus.current_stop()
 
     def __repr__(self):
         return 'Passenger disembarks bus {bus} at stop {stop} at time {time}'.format(
@@ -88,9 +92,9 @@ class PassengerCreation(Event):
         self.destination = destination
 
     def __repr__(self):
-        return 'A new passenger enters at stop {origin} with destination \
-        {destination} at time {time}'.format(
+        return 'A new passenger enters at stop {origin} with destination {dest} \
+        at time {time}'.format(
             origin=self.origin,
-            destination=self.destination,
+            dest=self.destination,
             time=self.time
         )
