@@ -2,16 +2,18 @@ from simulator.parser import InputParser
 
 class Simulator:
 
-    def __init__(self, max_time, filename):
+    def __init__(self, filename):
         """
         Initialize the simulator with some default values.
         """
-        self.max_time = max_time
-        self.time = 0.0
-        self.create_network(filename)  # TODO: maybe a bad idea?
+        # self.create_network(filename)  # TODO: maybe a bad idea?
         # self.network = PARSE A FILE
-        # self.board_rate = PARSE A FILE
-        # self.disembark_rate
+        self.time = 0.0
+        self.board_rate = None
+        self.disembark_rate = None
+        self.depart_rate = None
+        self.new_passengers_rate = None
+        self.stop_time = None
 
     def create_network(self, filename):
         """
@@ -70,6 +72,22 @@ class Simulator:
             board_passengers.append(passengers)
 
         return board_passengers
+
+    def validate(self):
+        """
+        If any of the needed rates was not set the simulation is not valid.
+
+        Next, validate the network.
+        """
+        if any([
+            self.board_rate is None,
+            self.disembark_rate is None,
+            self.departs_rate is None,
+            self.new_passengers_rate is None,
+            max_time is None
+        ]):
+            raise Exception("The simulation is not valid.")
+        self.network.validate()
 
     def run(self):
         """
