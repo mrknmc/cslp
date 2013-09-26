@@ -14,7 +14,7 @@ class Bus:
         Also initialize the number of passengers to 0.
         """
         self.uid = "{0}.{1}".format(route_id, bus_id)
-	self.capacity = capacity
+        self.capacity = capacity
         self.passengers = []
         self.stop_id = stop_id
         self.in_motion = False
@@ -61,7 +61,7 @@ class Bus:
         return self.disembarking_passengers() == []
 
     def __repr__(self):
-        return self.uid
+        return '{0}'.format(self.uid)
 
 
 class Passenger:
@@ -81,6 +81,9 @@ class Road:
         self.destination = destination
         self.rate = rate
 
+    def __repr__(self):
+        return '{0} - {1} ({2})'.format(self.origin, self.destination, self.rate)
+
 
 class Route:
 
@@ -89,13 +92,14 @@ class Route:
         self.buses = []
         self.stop_ids = stop_ids
 
+        # Create all the buses
         for bus_id in range(bus_count):
             stop_id = stop_ids[bus_id]
             bus = Bus(route_id, bus_id, bus_capacity, stop_id)
             self.buses.append(bus)
 
     def __repr__(self):
-        return self.route_id
+        return '{0}'.format(self.route_id)
 
 
 class Stop:
@@ -160,12 +164,12 @@ class Network:
         to create the stops since for a valid network there will always
         be roads specifying them.
 
-	Need to enforce proper type.
+        Need to enforce proper type.
         """
-	route_id = int(route_id)
-	stop_ids = stop_ids if isinstance(stop_ids, list) else map(int, stop_ids.split(' '))
-	bus_count = int(bus_count)
-	bus_capacity = int(bus_capacity)
+        route_id = int(route_id)
+        stop_ids = stop_ids if isinstance(stop_ids, list) else map(int, stop_ids.split(' '))
+        bus_count = int(bus_count)
+        bus_capacity = int(bus_capacity)
         route = Route(route_id, stop_ids, bus_count, bus_capacity)
         self.routes[route_id] = route
 
@@ -173,14 +177,14 @@ class Network:
         """
         Create a new road, its stops and add it to the network.
 
-	Need to enforce proper type.
+        Need to enforce proper type.
         """
-	origin = int(origin)
-	destination = int(destination)
-	rate = float(rate)
+        origin = int(origin)
+        destination = int(destination)
+        rate = float(rate)
 
-	road = Road(origin, destination, rate)
-	self.roads[origin].add(road)
+        road = Road(origin, destination, rate)
+        self.roads[origin].add(road)
 
     def validate(self):
         """
