@@ -10,9 +10,19 @@ class TestRouteRegex(unittest.TestCase):
         self.parser = InputParser()
 
     def test_parse_valid_route(self):
-        line = 'route 1 stops 1 2 4 8 buses 4 capacity 50'
+        params = {
+            'id': 1,
+            'stops': ' '.join(['1','2','4','8']),
+            'count': 4,
+            'cap': 50
+        }
+        line = 'route {id} stops {stops} buses {count} capacity {cap}'.format(**params)
         self.parser.parse_line(line)
-        # assert self.parser.network contains route 1
+        route = self.parser.network.routes[params['id']]
+        self.assertEqual(route.route_id, params['id'])
+        self.assertEqual(route.stop_ids, map(int, params['stops'].split(' ')))
+        self.assertEqual(len(route.buses), params['count'])
+        self.assertEqual(route.buses[0].capacity, params['cap'])
 
     def test_parse_route_without_name(self):
         line = 'route  stops 1 2 3 buses 7 capacity 20'
@@ -41,9 +51,19 @@ class TestRoadRegex(unittest.TestCase):
         self.parser = InputParser()
 
     def test_valid_road(self):
-        line = 'road 12 23 2.1'
+        params = {
+            'orig': 12,
+            'dest': 23,
+            'rate': 2.1
+        }
+        line = 'road {orig} {dest} {rate}'.format(**params)
         self.parser.parse_line(line)
-        # assert it works
+        roads = self.parser.network.roads[params['orig']]
+        self.assertEqual(len(roads), 1)
+        road = roads.pop()
+        self.assertEqual(road.origin, params['orig'])
+        self.assertEqual(road.destination, params['dest'])
+        self.assertEqual(road.rate, params['rate'])
 
     def test_parse_road_without_origin(self):
         line = 'road  23 2.1'
