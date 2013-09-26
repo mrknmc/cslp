@@ -43,11 +43,6 @@ class InputParser:
         Function that parses the line and calls an appropriate method
         """
         if self.rxmatch(ROUTE_RX, line):
-            # TODO: Have to make this nicer - not dynamic enough!
-            self.line_params['stop_ids'] = map(int, self.line_params['stop_ids'].split(' '))
-            self.line_params['route_id'] = int(self.line_params['route_id'])
-            self.line_params['bus_count'] = int(self.line_params['bus_count'])
-            self.line_params['bus_capacity'] = int(self.line_params['bus_capacity'])
             self.network.add_route(**self.line_params)
         elif self.rxmatch(ROAD_RX, line):
             self.network.add_road(**self.line_params)
