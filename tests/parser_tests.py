@@ -80,6 +80,63 @@ class TestRoadRegex(unittest.TestCase):
         self.parser.parse_line(line)
         # assert it doesn't work
 
+
+class TestRatesRegex(unittest.TestCase):
+
+    def setUp(self):
+        self.parser = InputParser()
+
+    def test_valid_boards_rate(self):
+        line = 'board 0.9'
+        self.parser.parse_line(line)
+        self.assertEqual(self.parser.sim.boards_rate, 0.9)
+
+    def test_invalid_boards_rate(self):
+        line = 'board i'
+        self.parser.parse_line(line)
+        # assert NoMatches
+
+    def test_valid_disembarks_rate(self):
+        line = 'disembarks 2.3'
+        self.parser.parse_line(line)
+        self.assertEqual(self.parser.sim.disembarks_rate, 2.3)
+
+    def test_invalid_disembarks_rate(self):
+        line = 'disembarks '
+        self.parser.parse_line(line)
+        # assert NoMatches
+
+    def test_valid_departs_rate(self):
+        line = 'departs 0.3'
+        self.parser.parse_line(line)
+        self.assertEqual(self.parser.sim.departs_rate, 0.3)
+
+    def test_invalid_departs_rate(self):
+        line = 'departs  '
+        self.parser.parse_line(line)
+        # assert NoMatches
+
+    def test_valid_new_passengers_rate(self):
+        line = 'new passengers 7'
+        self.parser.parse_line(line)
+        self.assertEqual(self.parser.sim.new_passengers_rate, 7)
+
+    def test_invalid_new_passengers_rate(self):
+        line = 'new passengers'
+        self.parser.parse_line(line)
+        # assert NoMatches
+
+    def test_valid_stop_time(self):
+        line = 'stop time 2'
+        self.parser.parse_line(line)
+        self.assertEqual(self.parser.sim.stop_time, 2)
+
+    def test_invalid_stop_time(self):
+        line = 'stoptime 2'
+        self.parser.parse_line(line)
+        # assert NoMatches
+
+
 class TestFloatRegex(unittest.TestCase):
 
     def setUp(self):
