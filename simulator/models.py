@@ -61,6 +61,14 @@ class Bus:
         return self.disembarking_passengers() == []
 
     def __repr__(self):
+        return 'Bus {0} | C: {1} | S: {2} | P: {3}'.format(
+            self.uid,
+            self.capacity,
+            self.stop_id,
+            len(self.passengers)
+        )
+
+    def __str__(self):
         return '{0}'.format(self.uid)
 
 
@@ -82,7 +90,7 @@ class Road:
         self.rate = rate
 
     def __repr__(self):
-        return '{0} - {1} ({2})'.format(self.origin, self.destination, self.rate)
+        return 'Road {0} - {1} ({2})'.format(self.origin, self.destination, self.rate)
 
 
 class Route:
@@ -99,6 +107,9 @@ class Route:
             self.buses.append(bus)
 
     def __repr__(self):
+        return 'Route: {0} | B: {1} | S: {2}'.format(self.route_id, len(self.buses), self.stop_ids)
+
+    def __str__(self):
         return '{0}'.format(self.route_id)
 
 
@@ -133,6 +144,9 @@ class Stop:
         # MAYBE log the passenger creation event here?
 
     def __repr__(self):
+        return 'Stop {0} | B: {1} | P: {2}'.format(self.stop_id, self.bus_queue, self.passengers)
+
+    def __str__(self):
         return self.stop_id
 
 
@@ -194,5 +208,17 @@ class Network:
 
         There could be more buses than there are stops.
 
+        This could probably solved by representing the network as a graph
+        and validating the graph.
+
         """
         pass
+
+    def __repr__(self):
+        """
+        """
+        return """
+Roads: {roads}
+
+Routes: {routes}
+        """.format(roads=[list(r) for r in self.roads.values()], routes=self.routes.values())
