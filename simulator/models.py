@@ -82,7 +82,7 @@ class Passenger:
         # stop.enqueue_passenger(self)
 
     def __repr__(self):
-	return 'Pax({0} - {1})'.format(self.origin, self.destination)
+        return 'Pax({0} - {1})'.format(self.origin, self.destination)
 
 
 class Road:
@@ -168,9 +168,9 @@ class Network:
         self.routes = {
             # <route_id> : <route>
         }
-	self.stops = {
-	    # <stop_id> : <stop>
-	}
+        self.stops = {
+            # <stop_id> : <stop>
+        }
 
     def get_route_by_id(self, route_id):
         """
@@ -183,45 +183,33 @@ class Network:
         Create a new route and add it to the network. There is no need
         to create the stops since for a valid network there will always
         be roads specifying them.
-
-        Need to enforce proper type.
         """
-        route_id = int(route_id)
-        stop_ids = stop_ids if isinstance(stop_ids, list) else map(int, stop_ids.split(' '))
-        bus_count = int(bus_count)
-        bus_capacity = int(bus_capacity)
         route = Route(route_id, stop_ids, bus_count, bus_capacity)
-	for stop_id in stop_ids:
-	    self.stops[stop_id] = Stop(stop_id)
+        for stop_id in stop_ids:
+            self.stops[stop_id] = Stop(stop_id)
         self.routes[route_id] = route
 
     def add_road(self, origin, destination, rate):
         """
         Create a new road, its stops and add it to the network.
-
-        Need to enforce proper type.
         """
-        origin = int(origin)
-        destination = int(destination)
-        rate = float(rate)
-
         road = Road(origin, destination, rate)
         self.roads[origin].add(road)
 
     def get_buses(self):
-	"""
-	Returns all the buses in the network.
-	"""
-	for route in self.routes.itervalues():
-	    for bus in route.buses:
-		yield bus
+        """
+        Returns all the buses in the network.
+        """
+        for route in self.routes.itervalues():
+            for bus in route.buses:
+                yield bus
 
     def get_stops(self):
-	"""
-	Returns all the stops in the network.
-	"""
-	for stop in self.stops.itervalues():
-	    yield stop
+        """
+        Returns all the stops in the network.
+        """
+        for stop in self.stops.itervalues():
+            yield stop
 
     def validate(self):
         """
