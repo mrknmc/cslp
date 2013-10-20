@@ -1,17 +1,21 @@
+from collections import defaultdict
+
 from simulator.parser import parse_file
 
 
 class World:
 
-    def __init__(self, filename):
+    def __init__(self, filename=None):
         """
-        Initialize the simulator with some default values.
+	Initialize the world.
         """
+	self.time = 0.0
+	if not filename:
+	    return  # mainly for testing - init the world add params later
         network, params = parse_file(filename)
         self.network = network
-        self.time = 0.0
-        for key, rate in params:  # this sets all the rates and flags
-            setattr(self, key, rate)
+	for key, val in params.iteritems():  # this sets all the rates and flags
+	    setattr(self.world, key, val)
 
     def possible_events(self):
         """
