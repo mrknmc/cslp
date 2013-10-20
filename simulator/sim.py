@@ -1,27 +1,18 @@
-from simulator.parser import InputParser
+from simulator.parser import Parser
 
 
-class Simulator:
+class World:
 
     def __init__(self, filename):
         """
         Initialize the simulator with some default values.
         """
-        # self.create_network(filename)  # TODO: maybe a bad idea?
-        # self.network = PARSE A FILE
+        parser = InputParser(filename)  # TODO: maybe a bad idea?
+        parser.parse_file()
+        self.network = parser.network
         self.time = 0.0
-        self.board_rate = None
-        self.disembark_rate = None
-        self.depart_rate = None
-        self.new_passengers_rate = None
-        self.stop_time = None
-
-    def create_network(self, filename):
-        """
-        Create a network from the passed in input file.
-        """
-        parser = InputParser()
-        self.network = parser.parse_file(filename)
+        for key, rate in parser.rates:  # this sets all the rates
+            setattr(self, key, rate)
 
     def possible_events(self):
         """
@@ -83,9 +74,9 @@ class Simulator:
         if any([
             self.board_rate is None,
             self.disembark_rate is None,
-            self.departs_rate is None,
+            self.depart_rate is None,
             self.new_passengers_rate is None,
-            self.max_time is None
+            self.stop_time is None
         ]):
             raise Exception("The simulation is not valid.")
         self.network.validate()
@@ -100,10 +91,3 @@ class Simulator:
             pass  # event <- choose probabilistically from those events
             pass  # modify the state of the system based on the chosen event
             pass  # time <- time + delay
-
-
-def main():
-    pass
-
-if __name__ == '__main__':
-    main()
