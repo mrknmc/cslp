@@ -55,7 +55,9 @@ def parse_file(filename):
                 match = rxmatch(rate_rx, line, ftype=float)
                 if match:
                     params.update(**match)
-                    continue
+                    break
+            if match:
+                continue
 
             if rxmatch(IGNORE_WARN_RX, line):
                 params['ignore_warn'] = True
