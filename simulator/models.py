@@ -168,6 +168,9 @@ class Network:
         self.routes = {
             # <route_id> : <route>
         }
+	self.stops = {
+	    # <stop_id> : <stop>
+	}
 
     def get_route_by_id(self, route_id):
         """
@@ -188,6 +191,8 @@ class Network:
         bus_count = int(bus_count)
         bus_capacity = int(bus_capacity)
         route = Route(route_id, stop_ids, bus_count, bus_capacity)
+	for stop_id in stop_ids:
+	    self.stops[stop_id] = Stop(stop_id)
         self.routes[route_id] = route
 
     def add_road(self, origin, destination, rate):
@@ -202,6 +207,21 @@ class Network:
 
         road = Road(origin, destination, rate)
         self.roads[origin].add(road)
+
+    def get_buses(self):
+	"""
+	Returns all the buses in the network.
+	"""
+	for route in self.routes.itervalues():
+	    for bus in route.buses:
+		yield bus
+
+    def get_stops(self):
+	"""
+	Returns all the stops in the network.
+	"""
+	for stop in self.stops.itervalues():
+	    yield stop
 
     def validate(self):
         """
