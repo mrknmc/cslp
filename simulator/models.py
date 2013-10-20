@@ -81,6 +81,9 @@ class Passenger:
         # stop = network.get_stop(origin)
         # stop.enqueue_passenger(self)
 
+    def __repr__(self):
+	return 'Pax({0} - {1})'.format(self.origin, self.destination)
+
 
 class Road:
 
