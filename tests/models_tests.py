@@ -99,6 +99,16 @@ class TestBus(unittest.TestCase):
         self.assertEqual(disembarks, True)
 
 
+class TestRoute(unittest.TestCase):
+
+    def setUp(self):
+        self.route = Route(1, [1, 2, 3], 3, 10)
+
+    def test_initial_bus_stops(self):
+        for bus, stop_id in zip(self.route.buses, [1, 2, 3]):
+            self.assertEqual(bus.stop_id, stop_id)
+
+
 class TestStop(unittest.TestCase):
 
     def setUp(self):
