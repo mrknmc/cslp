@@ -1,5 +1,6 @@
 from simulator.parser import InputParser
 
+
 class Simulator:
 
     def __init__(self, filename):
@@ -68,7 +69,7 @@ class Simulator:
         board_passengers = []
         for stop in stops:
             # TODO: work-out how to satisfy a passenger's destination
-            passengers = [pax for pax in passengers if stop.can_board(pax)]
+            passengers = [pax for pax in stop.passengers if stop.can_board(pax)]
             board_passengers.append(passengers)
 
         return board_passengers
@@ -84,7 +85,7 @@ class Simulator:
             self.disembark_rate is None,
             self.departs_rate is None,
             self.new_passengers_rate is None,
-            max_time is None
+            self.max_time is None
         ]):
             raise Exception("The simulation is not valid.")
         self.network.validate()
@@ -100,6 +101,9 @@ class Simulator:
             pass  # modify the state of the system based on the chosen event
             pass  # time <- time + delay
 
+
+def main():
+    pass
 
 if __name__ == '__main__':
     main()
