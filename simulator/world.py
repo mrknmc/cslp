@@ -1,4 +1,4 @@
-from simulator.parser import Parser
+from simulator.parser import parse_file
 
 
 class World:
@@ -7,11 +7,10 @@ class World:
         """
         Initialize the simulator with some default values.
         """
-        parser = InputParser(filename)  # TODO: maybe a bad idea?
-        parser.parse_file()
-        self.network = parser.network
+        network, params = parse_file(filename)
+        self.network = network
         self.time = 0.0
-        for key, rate in parser.rates:  # this sets all the rates
+        for key, rate in params:  # this sets all the rates and flags
             setattr(self, key, rate)
 
     def possible_events(self):

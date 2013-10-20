@@ -36,8 +36,7 @@ def parse_file(filename):
     """
     """
     network = Network()
-    rates = {}
-    flags = {}
+    params = {}
     with open(filename, 'r') as f:
         for line_no, line in enumerate(f, start=1):
             line = line.rstrip('\n')  # get rid of newline
@@ -55,15 +54,15 @@ def parse_file(filename):
             for rate_rx in RATES_RX:
                 match = rxmatch(rate_rx, line, ftype=float)
                 if match:
-                    rates.update(**match)
+                    params.update(**match)
                     continue
 
             if rxmatch(IGNORE_WARN_RX, line):
-                flags['ignore_warn'] = True
+                params['ignore_warn'] = True
                 continue
 
             if rxmatch(OPTIMIZE_RX, line):
-                flags['optimize'] = True
+                params['optimize'] = True
                 continue
 
             if rxmatch(NEWLINE_COMMENT_RX, line):
@@ -71,7 +70,7 @@ def parse_file(filename):
 
             raise Exception('Invalid input on line {0} of file {1}'.format(line_no, filename))
 
-    return network, rates, flags
+    return network, params
 
 
 def rxmatch(pattern, string, ftype=None):
