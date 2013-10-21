@@ -6,18 +6,30 @@ from collections import defaultdict
 
 class Bus:
 
-    def __init__(self, route_id, bus_id, capacity, stop_id):
+    def __init__(self, route, bus_id, capacity, stop):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
 
         Also initialize the number of passengers to 0.
         """
-        self.uid = "{0}.{1}".format(route_id, bus_id)
+        self.route = route
+        self.bus_id = bus_id
         self.capacity = capacity
         self.passengers = []
-        self.stop_id = stop_id
+        self.stop = stop
         self.in_motion = False
+        self.stop.enqueue_bus(self)
+
+    def get_id(self):
+        return '{0}.{1}'.format(self.route.route_id, self.bus_id)
+
+    def can_satisfy(self, passenger):
+        """
+        Returns True if the bus can satisfy passenger's destination.
+        """
+        stop_ids = map(lambda s: s.stop_id, self.route.stops)
+        return (passenger.destination in stop_ids)
 
     def board_passenger(self, passenger):
         """
@@ -30,7 +42,7 @@ class Bus:
         and it has either full capacity or the bus stop has no passengers who want to board.
         """
         return (not self.in_motion) and \
-               (self.full_capacity() or self.stop.no_boarders()) and \
+               (self.full_capacity() or self.no_boarders()) and \
                self.no_disembarks()
 
     def ready_for_arrival(self):
@@ -43,7 +55,7 @@ class Bus:
         """
         Return passengers that have arrived at their destination and want to disembark.
         """
-        return [pax for pax in self.passengers if pax.destination == self.stop_id]
+        return (pax for pax in self.passengers if pax.destination == self.stop.stop_id)
 
     def full_capacity(self):
         """
@@ -53,23 +65,28 @@ class Bus:
             return len(self.passengers) == self.capacity
         raise Exception('More passengers than allowed!')
 
+    def no_boarders(self):
+        """
+        Returns true if there are no passengers who want to board at the current bus stop.
+        """
+        return list(self.stop.boarding_passengers(bus=self)) == []
+
     def no_disembarks(self):
         """
         Returns true if there are no passengers who want to disembark at the current bus stop.
         """
-        # return filter(lambda p: p.destination == self.stop, self.passengers) == []
-        return self.disembarking_passengers() == []
+        return list(self.disembarking_passengers()) == []
 
     def __repr__(self):
         return 'Bus {0} | C: {1} | S: {2} | P: {3}'.format(
-            self.uid,
+            self.get_id(),
             self.capacity,
             self.stop_id,
             len(self.passengers)
         )
 
     def __str__(self):
-        return '{0}'.format(self.uid)
+        return '{0}'.format(self.get_id())
 
 
 class Passenger:
@@ -98,15 +115,15 @@ class Road:
 
 class Route:
 
-    def __init__(self, route_id, stop_ids, bus_count, bus_capacity):
+    def __init__(self, route_id, stops, bus_count, bus_capacity):
         self.route_id = route_id
         self.buses = []
-        self.stop_ids = stop_ids
+        self.stops = stops
 
         # Create all the buses
         for bus_id in range(bus_count):
-            stop_id = stop_ids[bus_id]
-            bus = Bus(route_id, bus_id, bus_capacity, stop_id)
+            stop = stops[bus_id]
+            bus = Bus(self, bus_id, bus_capacity, stop)
             self.buses.append(bus)
 
     def __repr__(self):
@@ -122,6 +139,20 @@ class Stop:
         self.stop_id = stop_id
         self.bus_queue = []
         self.passengers = []
+
+    def departing_buses(self):
+        """
+        Returns all the buses ready for departure.
+        """
+        return filter(Bus.ready_for_departure, self.bus_queue)
+
+    def boarding_passengers(self, bus=None):
+        """
+        Returns all the passengers ready to board.
+        """
+        if not bus:
+            bus = self.bus_queue[0]  # catch errors here!
+        return filter(bus.can_satisfy, self.passengers)
 
     def enqueue_bus(self, bus):
         """
@@ -184,9 +215,9 @@ class Network:
         to create the stops since for a valid network there will always
         be roads specifying them.
         """
-        route = Route(route_id, stop_ids, bus_count, bus_capacity)
-        for stop_id in stop_ids:
-            self.stops[stop_id] = Stop(stop_id)
+        stops = map(Stop, stop_ids)
+        route = Route(route_id, stops, bus_count, bus_capacity)
+        self.stops = dict(zip(stop_ids, stops))
         self.routes[route_id] = route
 
     def add_road(self, origin, destination, rate):
