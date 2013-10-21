@@ -1,5 +1,7 @@
 from collections import defaultdict
+from itertools import ifilterfalse, chain, imap
 
+from simulator.models import Bus
 from simulator.parser import parse_file
 
 
@@ -7,15 +9,15 @@ class World:
 
     def __init__(self, filename=None):
         """
-	Initialize the world.
+        Initialize the world.
         """
-	self.time = 0.0
-	if not filename:
-	    return  # mainly for testing - init the world add params later
+        self.time = 0.0
+        if not filename:
+            return  # mainly for testing - init the world add params later
         network, params = parse_file(filename)
         self.network = network
-	for key, val in params.iteritems():  # this sets all the rates and flags
-	    setattr(self.world, key, val)
+        for key, val in params.iteritems():  # this sets all the rates and flags
+            setattr(self.world, key, val)
 
     def possible_events(self):
         """
@@ -28,45 +30,44 @@ class World:
         Get a characted creation.
         """
         # TODO: Maybe move this function into Network object
-        for route, route_dict in self.network.routes.iteritems():
-            buses = route_dict["buses"]
-            dep_buses = self.departure_ready_buses(buses)  # all the buses that want to depart from their bus stop
-            arr_buses = self.arrival_ready_buses(buses)  # all the buses that want to arrive to their next bus stop
-            board_pax = self.boarding_passengers(stops)  # all the passengers that want to board a bus
-            exit_pax = self.disembarking_passengers(buses)  # all the passengers that want to disembark their bus
-            # TODO: don't forget a passenger creation here!
+        buses = list(self.network.get_buses())
+        stops = list(self.network.get_stops())
+        events = {
+            'disembarks': self.disembarking_passengers(buses=buses),
+            'boards': self.boarding_passengers(stops=stops),
+            'departs': self.departure_ready_buses(buses=buses)  # all the buses that want to depart from their bus stop
+        }
+        # events['arr_buses'].update(self.arrival_ready_buses(buses))  # all the buses that want to arrive to their next bus stop
+        # TODO: don't forget a passenger creation here!
 
             # handle route_dict["stops"]
+        return events
 
     def departure_ready_buses(self, buses):
         """
         Return buses that are ready for departure.
         """
-        # return filter(lambda b: b.ready_for_departure(), buses)
-        return [bus for bus in buses if bus.ready_for_departure()]
+        return (bus for bus in buses if bus.ready_for_departure())
 
-    def disembarking_passengers(self, buses):
+    def disembarking_passengers(self, buses=None):
         """
-        Return passengers that are at their destination station.
+        Returns set of passengers that are at their destination station.
         """
-        passengers = []
-        for bus in buses:
-            if not bus.in_motion:
-                passengers += bus.disembarking_passengers()
+        if not buses:
+            buses = self.network.get_buses()
 
-        return passengers
+        pax_gens = (bus.disembarking_passengers() for bus in buses if not bus.in_motion)
+        return chain(*pax_gens)
 
-    def boarding_passengers(self, stops):
+    def boarding_passengers(self, stops=None):
         """
         Return passengers that are at their origin station and want to board the bus.
         """
-        board_passengers = []
-        for stop in stops:
-            # TODO: work-out how to satisfy a passenger's destination
-            passengers = [pax for pax in stop.passengers if stop.can_board(pax)]
-            board_passengers.append(passengers)
+        if not stops:
+            stops = self.network.get_stops()
 
-        return board_passengers
+        pax_gens = (stop.boarding_passengers() for stop in stops)
+        return chain(*pax_gens)
 
     def validate(self):
         """
@@ -83,6 +84,13 @@ class World:
         ]):
             raise Exception("The simulation is not valid.")
         self.network.validate()
+
+    def start(self):
+        """
+        Validate and then start the run loop.
+        """
+        self.validate()
+        self.run()
 
     def run(self):
         """
