@@ -14,14 +14,13 @@ class BusArrival(Event):
     Event that represents a bus arriving at a certain bus stop.
     """
 
-    def __init__(self, bus, stop):
+    def __init__(self, bus):
         self.bus = bus
-        self.stop = stop
 
     def __repr__(self):
         return 'Bus {bus} arrives at stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop,
+            stop=self.bus.stop,
             time=self.time
         )
 
@@ -34,12 +33,11 @@ class BusDeparture(Event):
     def __init__(self, bus, stop):
         super()
         self.bus = bus
-        self.stop = stop
 
     def __repr__(self):
         return 'Bus {bus} leaves stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop,
+            stop=self.bus.stop,
             time=self.time
         )
 
@@ -52,14 +50,13 @@ class PassengerBoarded(Event):
 
     def __init__(self, bus, passenger):
         self.bus = bus
-        self.stop = bus.current_stop_id()
         self.destination = passenger.destination
 
     def __repr__(self):
         return 'Passenger boards bus {bus} at stop {stop} with destination \
         {destination} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop,
+            stop=self.bus.stop,
             destination=self.destination,
             time=self.time
         )
@@ -72,12 +69,11 @@ class PassengerDisembarked(Event):
 
     def __init__(self, bus):
         self.bus = bus
-        self.stop = bus.current_stop()
 
     def __repr__(self):
         return 'Passenger disembarks bus {bus} at stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop,
+            stop=self.bus.stop,
             time=self.time
         )
 
