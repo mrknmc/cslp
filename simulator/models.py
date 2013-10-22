@@ -21,7 +21,6 @@ class Bus:
         self.passengers = []
         self.stop = stop
         self.road = road
-        self.stop.enqueue_bus(self)
 
     @property
     def uid(self):
@@ -162,29 +161,6 @@ class Stop:
         if not bus:
             bus = self.bus_queue[0]  # catch errors here!
         return filter(bus.can_satisfy, self.passengers)
-
-    def enqueue_bus(self, bus):
-        """
-        A new bus arrives to the queue.
-        """
-        self.bus_queue.append(bus)
-        event = BusArrival(bus, self)
-        log(event)
-
-    def dequeue_bus(self):
-        """
-        The first bus departs from the queue.
-        """
-        bus = self.bus_queue.pop(0)
-        event = BusDeparture(bus, self)
-        log(event)
-
-    def enqueue_passenger(self, passenger):
-        """
-        A new passenger has arrived at the stop.
-        """
-        self.passengers.append(passenger)
-        # MAYBE log the passenger creation event here?
 
     def __repr__(self):
         return 'Stop({0} | B: {1} | P: {2})'.format(self.stop_id, self.bus_queue, self.passengers)
