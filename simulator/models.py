@@ -127,6 +127,13 @@ class Route:
             stop.bus_queue.append(bus)
             self.buses.append(bus)
 
+    def get_next_stop(self, stop_id):
+        """
+        Returns the next bus stop on this route for a stop_id.
+        """
+        next_idx = next(idx for idx, stop in enumerate(self.stops) if stop.stop_id == stop_id) + 1
+        return self.stops[next_idx % len(self.stops)]
+
     def __repr__(self):
         return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
 
