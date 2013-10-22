@@ -1,5 +1,6 @@
 from simulator.events import BusDeparture, BusArrival
 from simulator.util import log
+from simulator.errors import BusRoadStopConflict
 
 from itertools import cycle
 from collections import defaultdict
@@ -48,6 +49,8 @@ class Bus:
 
     @property
     def in_motion(self):
+        if self.stop is None and self.road is None:
+            raise BusRoadStopConflict()
         return self.stop is None and self.road is not None
 
     def ready_for_arrival(self):
