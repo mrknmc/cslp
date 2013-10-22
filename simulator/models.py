@@ -159,7 +159,10 @@ class Stop:
         Returns all the passengers ready to board.
         """
         if not bus:
-            bus = self.bus_queue[0]  # catch errors here!
+            try:
+                bus = self.bus_queue[0]
+            except IndexError:
+                return []
         return filter(bus.can_satisfy, self.passengers)
 
     def __repr__(self):
