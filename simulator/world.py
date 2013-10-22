@@ -38,9 +38,6 @@ class World:
             'departs': self.departure_ready_buses(buses=buses),
             'arrivals': self.arrival_ready_buses(buses=buses)
         }
-        # TODO: don't forget a passenger creation here!
-
-            # handle route_dict["stops"]
         return events
 
     def arrival_ready_buses(self, buses=None):
@@ -52,7 +49,7 @@ class World:
 
         return (bus for bus in buses if bus.ready_for_arrival())
 
-    def departure_ready_buses(self, buses):
+    def departure_ready_buses(self, buses=None):
         """
         Return buses that are ready for departure.
         """
