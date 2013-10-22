@@ -57,7 +57,7 @@ stop time 20"""
         for p, s in zip(pax, stops):
             s.passengers = p
         passengers = set(pax[0] + pax[2])
-        boards = set(self.world.possible_events()['boards'])
+        boards = set(self.world.possible_events()['board'])
         self.assertEqual(passengers, boards)
 
     def test_possible_departs(self):
