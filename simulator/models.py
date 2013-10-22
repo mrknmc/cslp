@@ -1,6 +1,7 @@
 from simulator.events import BusDeparture, BusArrival
 from simulator.util import log
 
+from itertools import cycle
 from collections import defaultdict
 
 
@@ -126,8 +127,7 @@ class Route:
         self.stops = stops
 
         # Create all the buses
-        for bus_id in range(bus_count):
-            stop = stops[bus_id]
+        for bus_id, stop in zip(range(bus_count), cycle(stops)):
             bus = Bus(self, bus_id, bus_capacity, stop, None)
             self.buses.append(bus)
 
