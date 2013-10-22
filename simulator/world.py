@@ -67,7 +67,7 @@ class World:
         if not buses:
             buses = self.network.get_buses()
 
-        return (bus for bus in buses if bus.ready_for_arrival())
+        return (bus for bus in buses if bus.in_motion)
 
     def departure_ready_buses(self, buses=None):
         """
