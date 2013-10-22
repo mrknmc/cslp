@@ -36,9 +36,9 @@ class World:
         stops = list(self.network.get_stops())
         events = {
             'disembarks': self.disembarking_passengers(buses=buses),
-            'boards': self.boarding_passengers(stops=stops),
+            'board': self.boarding_passengers(stops=stops),
             'departs': self.departure_ready_buses(buses=buses),
-            'arrivals': self.arrival_ready_buses(buses=buses)
+            'arrivals': self.arrival_ready_buses(buses=buses),
         }
         return events
 
