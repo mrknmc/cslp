@@ -23,7 +23,8 @@ class Bus:
         self.road = road
         self.stop.enqueue_bus(self)
 
-    def get_id(self):
+    @property
+    def uid(self):
         return '{0}.{1}'.format(self.route.route_id, self.bus_id)
 
     def can_satisfy(self, passenger):
@@ -87,7 +88,7 @@ class Bus:
 
     def __repr__(self):
         return 'Bus {0} | C: {1} | S: {2} | R: {3} | P: {4}'.format(
-            self.get_id(),
+            self.uid,
             self.capacity,
             self.stop.stop_id if self.stop else '-',
             '{0} - {1}'.format(self.road.origin, self.road.destination) if self.road else '-',
@@ -95,7 +96,7 @@ class Bus:
         )
 
     def __str__(self):
-        return '{0}'.format(self.get_id())
+        return '{0}'.format(self.uid)
 
 
 class Passenger:
