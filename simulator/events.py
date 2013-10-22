@@ -30,8 +30,7 @@ class BusDeparture(Event):
     Event that represents a bus departing a certain bus stop.
     """
 
-    def __init__(self, bus, stop):
-        super()
+    def __init__(self, bus):
         self.bus = bus
 
     def __repr__(self):
