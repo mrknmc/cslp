@@ -100,9 +100,9 @@ stop time 20"""
         self.assertEqual(buses, arrivals)
 
 
-class TestTotalRate(unittest.TestCase):
+class TestTotalRateDelay(unittest.TestCase):
     """
-    This test case tests whether the returned total rate is correct.
+    This test case tests whether the returned total rate and delay are correct.
     """
 
     def setUp(self):
@@ -156,6 +156,14 @@ stop time 20"""
 
         total_rate = self.world.calculate_total_rate()
         self.assertAlmostEqual(total_rate, 2.3, places=7)  # rounding error
+
+    def test_valid_delay(self):
+        """
+        Tests whether the correct delay is returned.
+        """
+        # delay = self.world.sample_delay(total_rate)
+        # not sure how to unit test this
+        pass
 
 
 if __name__ == '__main__':
