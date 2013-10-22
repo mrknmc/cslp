@@ -110,6 +110,7 @@ class TestRoute(unittest.TestCase):
 
     def test_initial_bus_stops(self):
         buses = self.route.buses
+        stops = self.route.stops
         self.assertEqual(buses[0].stop.stop_id, 0)
         self.assertEqual(buses[1].stop.stop_id, 1)
         self.assertEqual(buses[2].stop.stop_id, 2)
@@ -118,6 +119,10 @@ class TestRoute(unittest.TestCase):
         self.assertEqual(buses[5].stop.stop_id, 1)
         self.assertEqual(buses[6].stop.stop_id, 2)
         self.assertEqual(buses[7].stop.stop_id, 3)
+        self.assertEqual(len(stops[0].bus_queue), 2)
+        self.assertEqual(len(stops[1].bus_queue), 2)
+        self.assertEqual(len(stops[2].bus_queue), 2)
+        self.assertEqual(len(stops[3].bus_queue), 2)
 
 
 class TestStop(unittest.TestCase):
