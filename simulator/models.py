@@ -49,15 +49,7 @@ class Bus:
 
     @property
     def in_motion(self):
-        if self.stop is None and self.road is None:
-            raise BusRoadStopConflict()
-        return self.stop is None and self.road is not None
-
-    def ready_for_arrival(self):
-        """
-        Bus is ready for arrival when it's in motion.
-        """
-        return self.in_motion
+        return self.road is not None
 
     def disembarking_passengers(self):
         """
