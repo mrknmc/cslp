@@ -127,10 +127,10 @@ class World:
         Next, validate the network.
         """
         if any([
-            self.board_rate is None,
-            self.disembark_rate is None,
-            self.depart_rate is None,
-            self.new_passengers_rate is None,
+            self.board is None,
+            self.disembark is None,
+            self.depart is None,
+            self.new_passengers is None,
             self.stop_time is None
         ]):
             raise Exception("The simulation is not valid.")
