@@ -90,17 +90,14 @@ stop time 20"""
         """
         Tests whether all possible arrival events were returned.
         """
-        arrival_events = None
-        events = self.world.possible_events()
-        self.assertTrue(arrival_events.issubset(events))
-
-    def test_possible_creations(self):
-        """
-        Tests whether all possible passenger creation events were returned.
-        """
-        creation_events = None
-        events = self.world.possible_events()
-        self.assertTrue(creation_events.issubset(events))
+        roads = self.world.network.roads.values()
+        buses = list(self.world.network.get_buses())
+        for b, r in zip(buses[1:], roads[1:]):
+            b.road = list(r)[0]
+            b.stop = None
+        buses = set(buses[1:])
+        arrivals = set(self.world.possible_events()['arrivals'])
+        self.assertEqual(buses, arrivals)
 
 
 if __name__ == '__main__':
