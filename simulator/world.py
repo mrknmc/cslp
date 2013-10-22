@@ -35,18 +35,30 @@ class World:
         events = {
             'disembarks': self.disembarking_passengers(buses=buses),
             'boards': self.boarding_passengers(stops=stops),
-            'departs': self.departure_ready_buses(buses=buses)  # all the buses that want to depart from their bus stop
+            'departs': self.departure_ready_buses(buses=buses),
+            'arrivals': self.arrival_ready_buses(buses=buses)
         }
-        # events['arr_buses'].update(self.arrival_ready_buses(buses))  # all the buses that want to arrive to their next bus stop
         # TODO: don't forget a passenger creation here!
 
             # handle route_dict["stops"]
         return events
 
+    def arrival_ready_buses(self, buses=None):
+        """
+        Return buses that are ready for arrival.
+        """
+        if not buses:
+            buses = self.network.get_buses()
+
+        return (bus for bus in buses if bus.ready_for_arrival())
+
     def departure_ready_buses(self, buses):
         """
         Return buses that are ready for departure.
         """
+        if not buses:
+            buses = self.network.get_buses()
+
         return (bus for bus in buses if bus.ready_for_departure())
 
     def disembarking_passengers(self, buses=None):
