@@ -1,6 +1,6 @@
 import unittest
 
-from simulator.models import Network, Route, Bus, Passenger
+from simulator.models import *
 
 
 class TestNetwork(unittest.TestCase):
@@ -12,37 +12,39 @@ class TestNetwork(unittest.TestCase):
 class TestBus(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.stops = [Stop(3), Stop(4)]
+        self.route = Route(4, self.stops, 2, 20)
 
     def test_id(self):
         """
         Test that the bus id is set correctly.
         """
-        bus = Bus(12, 4, 20, 4)
-        self.assertEqual(bus.uid, '12.4')
+        stop = self.stops[0]
+        bus = Bus(self.route, 0, 20, stop, None)
+        self.assertEqual(bus.uid, '4.0')
 
     def test_ready_for_departure(self):
         """
 
         """
-        bus = Bus(1, 0, 20, 2)
+        stop = self.stops[0]
+        bus = Bus(1, None, 20, stop, None)
 
         bus.in_motion = False
         bus.passengers = [Passenger(4, 5)] * 20
         self.assertTrue(bus.ready_for_departure())
-        # TODO: finish this
 
     def test_disembarking_passengers(self):
         """
         Test that there are passengers who want to disembark.
         """
-        bus1 = Bus(12, 4, 20, 5)
-        bus2 = Bus(12, 4, 20, 2)
+        bus1 = Bus(self.route, 4, 20, self.stops[0], None)
+        bus2 = Bus(self.route, 3, 20, self.stops[1], None)
 
         passengers = [
-            Passenger(4, 5),
+            Passenger(4, 3),
             Passenger(2, 7),
-            Passenger(4, 5),
+            Passenger(4, 3),
             Passenger(4, 9),
             Passenger(6, 1),
         ]
@@ -50,20 +52,21 @@ class TestBus(unittest.TestCase):
         bus1.passengers = passengers
         bus2.passengers = passengers
 
-        exit_pax = bus1.disembarking_passengers()
+        exit_pax = list(bus1.disembarking_passengers())
 
         self.assertTrue(bus1.passengers[0] in exit_pax)
         self.assertTrue(bus1.passengers[2] in exit_pax)
         self.assertEqual(len(exit_pax), 2)
 
-        exit_pax = bus2.disembarking_passengers()
+        exit_pax = list(bus2.disembarking_passengers())
         self.assertEqual(exit_pax, [])
 
     def test_full_capacity(self):
         """
         Test that the capacity is full.
         """
-        bus = Bus(12, 4, 20, 5)
+        stop = self.stops[0]
+        bus = Bus(self.route, 4, 20, stop, None)
 
         bus.passengers = [Passenger(4, 5)] * 19
         self.assertFalse(bus.full_capacity())
@@ -78,13 +81,13 @@ class TestBus(unittest.TestCase):
         """
         Test that no one wants to disembark.
         """
-        bus1 = Bus(12, 4, 20, 5)
-        bus2 = Bus(12, 4, 20, 2)
+        bus1 = Bus(self.route, 4, 20, self.stops[0], None)
+        bus2 = Bus(self.route, 4, 20, self.stops[1], None)
 
         passengers = [
-            Passenger(4, 5),
+            Passenger(4, 3),
             Passenger(2, 7),
-            Passenger(4, 5),
+            Passenger(4, 3),
             Passenger(4, 9),
             Passenger(6, 1),
         ]
@@ -102,11 +105,19 @@ class TestBus(unittest.TestCase):
 class TestRoute(unittest.TestCase):
 
     def setUp(self):
-        self.route = Route(1, [1, 2, 3], 3, 10)
+        stops = map(Stop, range(0, 4))
+        self.route = Route(1, stops, 8, 10)
 
     def test_initial_bus_stops(self):
-        for bus, stop_id in zip(self.route.buses, [1, 2, 3]):
-            self.assertEqual(bus.stop_id, stop_id)
+        buses = self.route.buses
+        self.assertEqual(buses[0].stop.stop_id, 0)
+        self.assertEqual(buses[1].stop.stop_id, 1)
+        self.assertEqual(buses[2].stop.stop_id, 2)
+        self.assertEqual(buses[3].stop.stop_id, 3)
+        self.assertEqual(buses[4].stop.stop_id, 0)
+        self.assertEqual(buses[5].stop.stop_id, 1)
+        self.assertEqual(buses[6].stop.stop_id, 2)
+        self.assertEqual(buses[7].stop.stop_id, 3)
 
 
 class TestStop(unittest.TestCase):
