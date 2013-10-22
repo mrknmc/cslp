@@ -105,7 +105,7 @@ class TestTotalRate(unittest.TestCase):
     This test case tests whether the returned total rate is correct.
     """
 
-    def setUp():
+    def setUp(self):
         input_str = """route 1 stops 1 2 3 buses 3 capacity 10
 road 1 2 0.3
 road 2 3 0.5
@@ -121,32 +121,41 @@ stop time 20"""
         for key, val in params.iteritems():  # this sets all the rates and flags
             setattr(self.world, key, val)
 
-    def test_valid_total_rate():
+    def test_valid_total_rate(self):
         """
         Tests whether the correct total rate is returned.
 
         The correct total rate should be:
-        0.3 + 0.5 + 0.8 + 0.6 + 0.5 + 0.4 = 3.1
+        0.3 - bus 1.0 on road 1-2
+        0.6 - 1 person disembarking 1.1
+        0.5 - 1 person boarding 1.1
+        0.5 - bus 1.2 ready to depart
+        0.4 - passenger creation
+        ---
+        2.3 - total rate
         """
-        buses = self.network.routes[1].buses
-        # send bus 1.0 and 1.2 on the road
-        buses[0].stop.dequeue_bus()
-        buses[2].stop.dequeue_bus()
-        # give bus 1.1 some disembarking passengers
+        buses = self.world.network.routes[1].buses
+        stops = self.world.network.routes[1].stops
+
+        # send bus 1.0 on the road
+        self.world.dequeue_bus(stops[0])
+
+        # give bus 1.1 some passengers
         buses[1].passengers = [
             Passenger(2, 1),
             Passenger(1, 3),
             Passenger(3, 2)
         ]
-        # give the stop some boarding passengers for bus 1.1
-        self.network.stops[2].passengers = [
+
+        # give the stop some passengers for bus 1.1
+        self.world.network.stops[2].passengers = [
             Passenger(2, 3),
             Passenger(7, 5),
             Passenger(2, 5)
         ]
 
         total_rate = self.world.calculate_total_rate()
-        self.assertEqual(total_rate, 3.1)
+        self.assertAlmostEqual(total_rate, 2.3, places=7)  # rounding error
 
 
 if __name__ == '__main__':
