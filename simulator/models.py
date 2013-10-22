@@ -124,6 +124,7 @@ class Route:
         # Create all the buses
         for bus_id, stop in zip(range(bus_count), cycle(stops)):
             bus = Bus(self, bus_id, bus_capacity, stop, None)
+            stop.bus_queue.append(bus)
             self.buses.append(bus)
 
     def __repr__(self):
