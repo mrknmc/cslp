@@ -41,9 +41,8 @@ def parse_file(input_str):
             if rxmatch(NEWLINE_COMMENT_RX, line):
                 continue  # ignore empty lines and comments
 
-            raise Exception('Invalid input on line {0} of test file:\n{1!r}'.format(
-                line_no,
-                line
-            ))
+            raise Exception(
+                'Invalid input on line {0} of test file:\n{1!r}'.format(line_no, line)
+            )
 
     return network, params
