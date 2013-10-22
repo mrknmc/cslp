@@ -100,5 +100,54 @@ stop time 20"""
         self.assertEqual(buses, arrivals)
 
 
+class TestTotalRate(unittest.TestCase):
+    """
+    This test case tests whether the returned total rate is correct.
+    """
+
+    def setUp():
+        input_str = """route 1 stops 1 2 3 buses 3 capacity 10
+road 1 2 0.3
+road 2 3 0.5
+road 3 1 0.8
+board 0.5
+disembarks 0.6
+departs 0.5
+new passengers 0.4
+stop time 20"""
+        self.world = World()
+        network, params = parse_file(input_str)
+        self.world.network = network
+        for key, val in params.iteritems():  # this sets all the rates and flags
+            setattr(self.world, key, val)
+
+    def test_valid_total_rate():
+        """
+        Tests whether the correct total rate is returned.
+
+        The correct total rate should be:
+        0.3 + 0.5 + 0.8 + 0.6 + 0.5 + 0.4 = 3.1
+        """
+        buses = self.network.routes[1].buses
+        # send bus 1.0 and 1.2 on the road
+        buses[0].stop.dequeue_bus()
+        buses[2].stop.dequeue_bus()
+        # give bus 1.1 some disembarking passengers
+        buses[1].passengers = [
+            Passenger(2, 1),
+            Passenger(1, 3),
+            Passenger(3, 2)
+        ]
+        # give the stop some boarding passengers for bus 1.1
+        self.network.stops[2].passengers = [
+            Passenger(2, 3),
+            Passenger(7, 5),
+            Passenger(2, 5)
+        ]
+
+        total_rate = self.world.calculate_total_rate()
+        self.assertEqual(total_rate, 3.1)
+
+
 if __name__ == '__main__':
     unittest.main()
