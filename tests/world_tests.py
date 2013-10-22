@@ -161,9 +161,8 @@ stop time 20"""
         """
         Tests whether the correct delay is returned.
         """
-        # delay = self.world.sample_delay(total_rate)
+        delay = self.world.sample_delay()
         # not sure how to unit test this
-        pass
 
 
 if __name__ == '__main__':
