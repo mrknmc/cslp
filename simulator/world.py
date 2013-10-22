@@ -42,6 +42,24 @@ class World:
         }
         return events
 
+    def calculate_total_rate(self, events=None):
+        """
+        Calculates the total rate of all the events.
+        """
+        if not events:
+            events = self.possible_events()
+
+        total_rate = 0
+        for key, objs in events.iteritems():
+            try:
+                total_rate += getattr(self, key) * sum(1 for o in objs)
+            except AttributeError:
+                if key != 'arrivals':
+                    raise
+                total_rate += reduce(lambda t, b: t + b.road.rate, objs, 0)
+
+        return total_rate + self.new_passengers
+
     def arrival_ready_buses(self, buses=None):
         """
         Return buses that are ready for arrival.
