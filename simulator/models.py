@@ -6,7 +6,7 @@ from collections import defaultdict
 
 class Bus:
 
-    def __init__(self, route, bus_id, capacity, stop):
+    def __init__(self, route, bus_id, capacity, stop, road):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
@@ -18,7 +18,7 @@ class Bus:
         self.capacity = capacity
         self.passengers = []
         self.stop = stop
-        self.in_motion = False
+        self.road = road
         self.stop.enqueue_bus(self)
 
     def get_id(self):
@@ -45,11 +45,15 @@ class Bus:
                (self.full_capacity() or self.no_boarders()) and \
                self.no_disembarks()
 
+    @property
+    def in_motion(self):
+        return self.stop is None and self.road is not None
+
     def ready_for_arrival(self):
         """
         Bus is ready for arrival when it's in motion.
         """
-        pass
+        return self.in_motion
 
     def disembarking_passengers(self):
         """
@@ -78,10 +82,11 @@ class Bus:
         return list(self.disembarking_passengers()) == []
 
     def __repr__(self):
-        return 'Bus {0} | C: {1} | S: {2} | P: {3}'.format(
+        return 'Bus {0} | C: {1} | S: {2} | R: {3} | P: {4}'.format(
             self.get_id(),
             self.capacity,
-            self.stop_id,
+            self.stop.stop_id if self.stop else '-',
+            '{0} - {1}'.format(self.road.origin, self.road.destination) if self.road else '-',
             len(self.passengers)
         )
 
@@ -123,7 +128,7 @@ class Route:
         # Create all the buses
         for bus_id in range(bus_count):
             stop = stops[bus_id]
-            bus = Bus(self, bus_id, bus_capacity, stop)
+            bus = Bus(self, bus_id, bus_capacity, stop, None)
             self.buses.append(bus)
 
     def __repr__(self):
