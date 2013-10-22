@@ -1,5 +1,7 @@
 from collections import defaultdict
 from itertools import ifilterfalse, chain, imap
+from random import random
+from math import log
 
 from simulator.util import log
 from simulator.models import Bus
@@ -59,6 +61,16 @@ class World:
                 total_rate += reduce(lambda t, b: t + b.road.rate, objs, 0)
 
         return total_rate + self.new_passengers
+
+    def sample_delay(self, total_rate=None):
+        """
+        Return a sample delay based on total rate.
+        """
+        if not total_rate:
+            total_rate = self.calculate_total_rate()
+
+        mean = 1 / total_rate  # let's hope total_rate won't be 0
+        return -mean * log(random())
 
     def arrival_ready_buses(self, buses=None):
         """
