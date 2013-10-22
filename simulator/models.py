@@ -87,11 +87,11 @@ class Bus:
         return list(self.disembarking_passengers()) == []
 
     def __repr__(self):
-        return 'Bus {0} | C: {1} | S: {2} | R: {3} | P: {4}'.format(
+        return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
             self.uid,
             self.capacity,
             self.stop.stop_id if self.stop else '-',
-            '{0} - {1}'.format(self.road.origin, self.road.destination) if self.road else '-',
+            '{0}-{1}'.format(self.road.origin, self.road.destination) if self.road else '-',
             len(self.passengers)
         )
 
@@ -120,7 +120,7 @@ class Road:
         self.rate = rate
 
     def __repr__(self):
-        return 'Road {0} - {1} ({2})'.format(self.origin, self.destination, self.rate)
+        return 'Road({0} - {1} | {2})'.format(self.origin, self.destination, self.rate)
 
 
 class Route:
@@ -136,7 +136,7 @@ class Route:
             self.buses.append(bus)
 
     def __repr__(self):
-        return 'Route: {0} | B: {1} | S: {2}'.format(self.route_id, len(self.buses), self.stop_ids)
+        return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
 
     def __str__(self):
         return '{0}'.format(self.route_id)
@@ -187,10 +187,10 @@ class Stop:
         # MAYBE log the passenger creation event here?
 
     def __repr__(self):
-        return 'Stop {0} | B: {1} | P: {2}'.format(self.stop_id, self.bus_queue, self.passengers)
+        return 'Stop({0} | B: {1} | P: {2})'.format(self.stop_id, self.bus_queue, self.passengers)
 
     def __str__(self):
-        return self.stop_id
+        return str(self.stop_id)
 
 
 class Network:
