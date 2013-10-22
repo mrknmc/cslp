@@ -1,8 +1,10 @@
 from collections import defaultdict
 from itertools import ifilterfalse, chain, imap
 
+from simulator.util import log
 from simulator.models import Bus
 from simulator.parser import parse_file
+from simulator.events import BusArrival, BusDeparture
 
 
 class World:
@@ -77,6 +79,28 @@ class World:
 
         pax_gens = (stop.boarding_passengers() for stop in stops)
         return chain(*pax_gens)
+
+    def enqueue_bus(self, bus):
+        """
+        A new bus arrives to the queue.
+        """
+        stop = bus.stop
+        bus.road = None
+        event = BusArrival(bus)
+        log(event)
+
+    def dequeue_bus(self, stop):
+        """
+        The first bus departs from the queue.
+        """
+        bus = stop.bus_queue.pop(0)
+        cur_stop = bus.stop.stop_id
+        next_stop = bus.route.get_next_stop(stop.stop_id)  # set next stop
+        next_roads = self.network.roads[cur_stop]
+        bus.road = next(road for road in next_roads if road.destination == next_stop.stop_id)
+        bus.stop = next_stop
+        event = BusDeparture(bus)
+        log(event)
 
     def validate(self):
         """
