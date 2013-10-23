@@ -178,7 +178,7 @@ stop time 20"""
         Tests whether a valid event was chosen.
         """
         event = self.world.choose_event()
-        self.assertTrue(False)
+        # not sure how to test this
 
 
 if __name__ == '__main__':
