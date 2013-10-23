@@ -7,7 +7,7 @@ from math import log10
 from simulator.util import log, weighted_choice
 from simulator.models import Bus
 from simulator.parser import parse_file
-from simulator.events import BusArrival, BusDeparture
+from simulator.events import event_dispatch
 
 
 class World:
@@ -87,7 +87,9 @@ class World:
             for obj in objs:
                 probs.append((key, obj, getattr(self, key)))
 
-        print weighted_choice(probs, key=itemgetter(2))
+        key, obj, rate = weighted_choice(probs, key=itemgetter(2))
+        event = event_dispatch(self.time, key, obj)
+        return event
 
     def arrival_ready_buses(self, buses=None):
         """
