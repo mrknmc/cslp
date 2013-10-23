@@ -6,10 +6,10 @@ INT_RX = r'\d+'
 FLOAT_RX = r'(\d+(\.\d*)?|\.\d+)'
 NEWLINE_COMMENT_RX = r'^(\n|#.*\n)$'  # matches newline or a comment
 
-ROUTE_RX = r'^route (?P<route_id>{0}) stops (?P<stop_ids>{0}( {0})*) buses (?P<bus_count>{0}) capacity (?P<cap>{0})$'.format(INT_RX)
-ROAD_RX = r'^road (?P<orig>{0}) (?P<dest>{0}) (?P<rate>{1})$'.format(INT_RX, FLOAT_RX)
+ROUTE_RX = r'^route (?P<route_id>{0}) stops (?P<stop_ids>{0}( {0})*) buses (?P<bus_count>{0}) capacity (?P<bus_capacity>{0})$'.format(INT_RX)
+ROAD_RX = r'^road (?P<origin>{0}) (?P<destination>{0}) (?P<rate>{1})$'.format(INT_RX, FLOAT_RX)
 RATES_RX = (
-    r'^board (?P<boards>{0})$'.format(FLOAT_RX),
+    r'^board (?P<board>{0})$'.format(FLOAT_RX),
     r'^disembarks (?P<disembarks>{0})$'.format(FLOAT_RX),
     r'^departs (?P<departs>{0})$'.format(FLOAT_RX),
     r'^new passengers (?P<new_passengers>{0})$'.format(FLOAT_RX),
@@ -22,12 +22,12 @@ ROUTE_TYPES = {
     'route_id': int,
     'stop_ids': lambda a: map(int, str.split(a, ' ')),  # '1 2 3' -> [1, 2, 3]
     'bus_count': int,
-    'cap': int
+    'bus_capacity': int
 }
 
 ROAD_TYPES = {
-    'orig': int,
-    'dest': int,
+    'origin': int,
+    'destination': int,
     'rate': float
 }
 

@@ -11,10 +11,10 @@ class TestRouteRegex(unittest.TestCase):
             'route_id': 1,
             'stop_ids': [1, 2, 4, 8],
             'bus_count': 4,
-            'cap': 50
+            'bus_capacity': 50
         }
         stop_ids_str = ' '.join(map(str, params['stop_ids']))
-        line = 'route {route_id} stops {stop_ids_str} buses {bus_count} capacity {cap}'.format(stop_ids_str=stop_ids_str, **params)
+        line = 'route {route_id} stops {stop_ids_str} buses {bus_count} capacity {bus_capacity}'.format(stop_ids_str=stop_ids_str, **params)
         match = rxmatch(ROUTE_RX, line, ftype=ROUTE_TYPES)
         self.assertEqual(match, params)
 
@@ -39,11 +39,11 @@ class TestRoadRegex(unittest.TestCase):
 
     def test_valid_road(self):
         params = {
-            'orig': 12,
-            'dest': 23,
+            'origin': 12,
+            'destination': 23,
             'rate': 2.1
         }
-        line = 'road {orig} {dest} {rate}'.format(**params)
+        line = 'road {origin} {destination} {rate}'.format(**params)
         match = rxmatch(ROAD_RX, line, ftype=ROAD_TYPES)
         self.assertEqual(match, params)
 
@@ -64,7 +64,7 @@ class TestRatesRegex(unittest.TestCase):
 
     def test_valid_rates(self):
         tests = (
-            ('board', 0.9, 'boards'),
+            ('board', 0.9, 'board'),
             ('disembarks', 0.4, 'disembarks'),
             ('departs', 0.3, 'departs'),
             ('new passengers', 0.1, 'new_passengers'),

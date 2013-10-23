@@ -71,10 +71,10 @@ class TestBus(unittest.TestCase):
         bus.passengers = [Passenger(4, 5)] * 19
         self.assertFalse(bus.full_capacity())
 
-        bus.passengers.append(Passenger(4, 5))
+        bus.board_passenger(Passenger(4, 5))
         self.assertTrue(bus.full_capacity())
 
-        bus.passengers.append(Passenger(4, 5))
+        bus.board_passenger(Passenger(4, 5))
         self.assertRaises(Exception, bus.full_capacity)
 
     def test_no_disembarks(self):

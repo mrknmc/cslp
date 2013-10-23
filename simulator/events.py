@@ -5,7 +5,7 @@ def event_dispatch(time, event_id, *args, **kwargs):
     return {
         'arrivals': BusArrival,
         'departs': BusDeparture,
-        'boards': PassengerBoarded,
+        'board': PassengerBoarded,
         'disembarks': PassengerDisembarked,
         'new_passengers': PassengerCreation
     }[event_id](time, *args, **kwargs)
@@ -31,8 +31,7 @@ class BusArrival:
         """
         Updates the world based on this event.
         """
-        bus.stop.bus_queue.append(bus)
-        bus.road_rate = None
+        world.enqueue_bus(self.bus)
 
 
 class BusDeparture:
@@ -56,7 +55,8 @@ class BusDeparture:
         Updates the world based on this event.
         Dequeue bus from the bus stop
         """
-        world.dequeue_bus(self.bus)
+        stop = self.bus.stop
+        world.dequeue_bus(stop, self.bus)
 
 
 class PassengerBoarded:
