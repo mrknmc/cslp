@@ -172,9 +172,13 @@ stop time 20"""
         expected = -(1/total_rate) * log10(rand)
         delay = self.world.sample_delay(total_rate=total_rate)
         self.assertAlmostEqual(delay, expected, places=7)  # rounding error
+
+    def test_choose_event(self):
         """
-        delay = self.world.sample_delay()
-        # not sure how to unit test this
+        Tests whether a valid event was chosen.
+        """
+        event = self.world.choose_event()
+        self.assertTrue(False)
 
 
 if __name__ == '__main__':
