@@ -117,16 +117,14 @@ class PassengerCreation:
     Event that represents a passenger being created at the origin station with destination.
     """
 
-    def __init__(self, time, origin, destination):
+    def __init__(self, time):
         self.time = time
-        self.origin = origin
-        self.destination = destination
 
     def __repr__(self):
         return 'A new passenger enters at stop {origin} with destination {dest} \
         at time {time}'.format(
-            origin=self.origin,
-            dest=self.destination,
+            origin=self.passenger.orig,
+            dest=self.passenger.dest,
             time=self.time
         )
 
@@ -135,7 +133,8 @@ class PassengerCreation:
         Updates the world based on this event.
         Generate a new passenger on some stop that can satisfy his destination.
         """
-        orig, passenger = Passenger.generate()
+        orig, passenger = world.generate_passenger()
+        self.passenger = passenger
         self.world.stops[orig].passengers.append(passenger)
 
 
