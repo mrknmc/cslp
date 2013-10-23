@@ -82,7 +82,7 @@ class World:
         if not events:
             events = self.possible_events()
 
-        probs = []
+        probs = [('new_passengers', None, self.new_passengers)]
         for key, objs in events.iteritems():
             for obj in objs:
                 try:

@@ -29,7 +29,7 @@ class Bus:
         Returns True if the bus can satisfy passenger's destination.
         """
         stop_ids = map(lambda s: s.stop_id, self.route.stops)
-        return (passenger.destination in stop_ids)
+        return (passenger.dest in stop_ids)
 
     def ready_for_departure(self):
         """
@@ -48,7 +48,7 @@ class Bus:
         """
         Return passengers that have arrived at their destination and want to disembark.
         """
-        return (pax for pax in self.passengers if pax.destination == self.stop.stop_id)
+        return (pax for pax in self.passengers if pax.dest == self.stop.stop_id)
 
     def full_capacity(self):
         """
@@ -85,22 +85,13 @@ class Bus:
 
 class Passenger:
 
-    def __init__(self, origin, destination):
-        self.origin = origin
-        self.destination = destination
+    def __init__(self, orig, dest):
+        self.orig = orig
+        self.dest = dest
 
     def __repr__(self):
-        return 'Pax({0} - {1})'.format(self.origin, self.destination)
+        return 'Pax({0} - {1})'.format(self.orig, self.dest)
 
-    @staticmethod
-    def generate():
-        """
-        This function will generate a passenger.
-        These are certain constraints:
-            - it has to be random
-            - destination must be reachable from the origin by at least one route
-        """
-        pass
 
 class Route:
 
@@ -211,6 +202,25 @@ class Network:
         """
         for stop in self.stops.itervalues():
             yield stop
+
+    def generate_passenger(self):
+        """
+        Generates a passenger on the network.
+        """
+        orig = choice(self.stops)
+
+        dests = []
+        for route in self.routes.itervalues():
+            try:
+                idx = route.stops.index(orig)
+                dests.extend(routes.stops[:idx])
+                dests.extend(routes.stops[idx+1:])
+            except ValueError:
+                continue
+
+        dest = choice(dests).stop_id
+        orig = orig.stop_id
+        return orig, Passenger(orig, dest)
 
     def validate(self):
         """
