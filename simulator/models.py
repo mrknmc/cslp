@@ -1,6 +1,4 @@
-from simulator.events import BusDeparture, BusArrival
 from simulator.util import log
-from simulator.errors import BusRoadStopConflict
 
 from itertools import cycle
 from collections import defaultdict
