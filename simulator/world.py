@@ -182,6 +182,6 @@ class World:
             events = self.possible_events(as_list=True)
             total_rate = self.calculate_total_rate(events=events)
             delay = self.sample_delay(total_rate=total_rate)
-            pass  # event <- choose probabilistically from those events
-            pass  # modify the state of the system based on the chosen event
-            pass  # time <- time + delay
+            event = self.choose_event(events)
+            self.update_world(event)
+            self.time += delay
