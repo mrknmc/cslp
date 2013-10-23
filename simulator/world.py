@@ -135,21 +135,18 @@ class World:
         """
         stop = bus.stop
         bus.road = None
-        event = BusArrival(bus)
-        log(event)
 
-    def dequeue_bus(self, stop):
+    def dequeue_bus(self, stop, bus=None):
         """
         The first bus departs from the queue.
         """
-        bus = stop.bus_queue.pop(0)
+        if not bus:
+            bus = stop.bus_queue.pop(0)
         cur_stop = bus.stop.stop_id
         next_stop = bus.route.get_next_stop(stop.stop_id)  # set next stop
         next_roads = self.network.roads[cur_stop]
         bus.road = next(road for road in next_roads if road.destination == next_stop.stop_id)
         bus.stop = next_stop
-        event = BusDeparture(bus)
-        log(event)
 
     def validate(self):
         """
