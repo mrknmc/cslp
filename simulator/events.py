@@ -1,3 +1,4 @@
+from simulator.models import Passenger
 
 
 def event_dispatch(time, event_id, *args, **kwargs):
@@ -134,5 +135,7 @@ class PassengerCreation:
         Updates the world based on this event.
         Generate a new passenger on some stop that can satisfy his destination.
         """
-        pass
+        orig, passenger = Passenger.generate()
+        self.world.stops[orig].passengers.append(passenger)
+
 
