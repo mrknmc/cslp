@@ -24,9 +24,9 @@ def weighted_choice(iterable, key=None):
 
     for i in iterable:
         running_total += key(i)
-        totals.append(i)
+        totals.append(running_total)
 
     rnd = random.random() * running_total
-    for total in totals:
-        if rnd < key(total):
-            return total
+    for i, total in enumerate(totals):
+        if rnd < total:
+            return iterable[i]
