@@ -1,5 +1,8 @@
 import unittest
 
+from random import seed, random
+from math import log10
+
 from simulator.world import World
 from simulator.models import Passenger
 from tests.fake_parser import parse_file
@@ -160,6 +163,15 @@ stop time 20"""
     def test_valid_delay(self):
         """
         Tests whether the correct delay is returned.
+        Set the seed so we are guaranteed the same result every time.
+        """
+        seed(1)
+        rand = 0.13436424411240122  # with seed = 1
+
+        total_rate = self.world.calculate_total_rate()
+        expected = -(1/total_rate) * log10(rand)
+        delay = self.world.sample_delay(total_rate=total_rate)
+        self.assertAlmostEqual(delay, expected, places=7)  # rounding error
         """
         delay = self.world.sample_delay()
         # not sure how to unit test this
