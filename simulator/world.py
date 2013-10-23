@@ -173,17 +173,18 @@ class World:
         """
         Validate and then start the run loop.
         """
-        self.validate()
+        # self.validate()
         self.run()
 
     def run(self):
         """
         Run the simulation until world explodes.
         """
-        while self.time <= self.max_time:
+        while self.time <= self.stop_time:
             events = self.possible_events(as_list=True)
             total_rate = self.calculate_total_rate(events=events)
             delay = self.sample_delay(total_rate=total_rate)
             event = self.choose_event(events)
+            log(event)
             event.update_world(self)
             self.time += delay
