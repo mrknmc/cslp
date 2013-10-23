@@ -183,5 +183,5 @@ class World:
             total_rate = self.calculate_total_rate(events=events)
             delay = self.sample_delay(total_rate=total_rate)
             event = self.choose_event(events)
-            self.update_world(event)
+            event.update_world(self)
             self.time += delay
