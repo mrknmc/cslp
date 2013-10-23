@@ -1,7 +1,7 @@
 from collections import defaultdict
 from itertools import ifilterfalse, chain, imap
 from random import random
-from math import log
+from math import log10
 
 from simulator.util import log
 from simulator.models import Bus
@@ -72,7 +72,7 @@ class World:
             total_rate = self.calculate_total_rate()
 
         mean = 1 / total_rate  # let's hope total_rate won't be 0
-        return -mean * log(random())
+        return -mean * log10(random())
 
     def arrival_ready_buses(self, buses=None):
         """
