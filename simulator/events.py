@@ -10,15 +10,6 @@ def event_dispatch(time, event_id, *args, **kwargs):
     }[event_id](time, *args, **kwargs)
 
 
-class Event:
-    """
-    Parent Event class.
-    """
-    def __init__(self):
-        # SOMEHOW GET THE TIME
-        pass
-
-
 class BusArrival(Event):
     """
     Event that represents a bus arriving at a certain bus stop.
@@ -34,6 +25,12 @@ class BusArrival(Event):
             stop=self.bus.stop,
             time=self.time
         )
+
+    def update_world(self, world):
+        """
+        Updates the world based on this event.
+        """
+        world.enqueue_bus(self.bus)
 
 
 class BusDeparture(Event):
@@ -51,6 +48,13 @@ class BusDeparture(Event):
             stop=self.bus.stop,
             time=self.time
         )
+
+    def update_world(self, world):
+        """
+        Updates the world based on this event.
+        Dequeue bus from the bus stop
+        """
+        world.dequeue_bus(bus)
 
 
 class PassengerBoarded(Event):
@@ -72,6 +76,15 @@ class PassengerBoarded(Event):
             time=self.time
         )
 
+    def update_world(self, world):
+        """
+        Updates the world based on this event.
+        Remove the passenger from the bus stop and board him on the bus.
+        """
+        stop = self.bus.stop
+        stop.passengers.remove(self.passenger)
+        self.bus.passengers.append(self.passenger)
+
 
 class PassengerDisembarked(Event):
     """
@@ -88,6 +101,13 @@ class PassengerDisembarked(Event):
             stop=self.bus.stop,
             time=self.time
         )
+
+    def update_world(self, world):
+        """
+        Updates the world based on this event.
+        Remove the passenger from the bus.
+        """
+        self.bus.passengers.remove(self.passenger)
 
 
 class PassengerCreation(Event):
@@ -107,3 +127,11 @@ class PassengerCreation(Event):
             dest=self.destination,
             time=self.time
         )
+
+    def update_world(self, world):
+        """
+        Updates the world based on this event.
+        Generate a new passenger on some stop that can satisfy his destination.
+        """
+        pass
+
