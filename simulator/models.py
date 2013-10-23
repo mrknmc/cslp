@@ -95,12 +95,19 @@ class Passenger:
     def __init__(self, origin, destination):
         self.origin = origin
         self.destination = destination
-        # TODO: Below really should not be handled by the passenger
-        # stop = network.get_stop(origin)
-        # stop.enqueue_passenger(self)
 
     def __repr__(self):
         return 'Pax({0} - {1})'.format(self.origin, self.destination)
+
+    @staticmethod
+    def generate():
+        """
+        This function will generate a passenger.
+        These are certain constraints:
+            - it has to be random
+            - destination must be reachable from the origin by at least one route
+        """
+        pass
 
 
 class Road:
