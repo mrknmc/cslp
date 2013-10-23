@@ -6,7 +6,7 @@ from collections import defaultdict
 
 class Bus:
 
-    def __init__(self, route, bus_id, capacity, stop, road):
+    def __init__(self, route, bus_id, capacity, stop, road_rate):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
@@ -18,7 +18,7 @@ class Bus:
         self.capacity = capacity
         self.passengers = []
         self.stop = stop
-        self.road = road
+        self.road_rate = road_rate
 
     @property
     def uid(self):
@@ -31,11 +31,6 @@ class Bus:
         stop_ids = map(lambda s: s.stop_id, self.route.stops)
         return (passenger.dest in stop_ids)
 
-    def board_passenger(self, passenger):
-        """
-        """
-        self.passengers.append(passenger)
-
     def ready_for_departure(self):
         """
         Bus is ready for departure when it's not in motion, no one wants to disembark the bus
@@ -47,7 +42,7 @@ class Bus:
 
     @property
     def in_motion(self):
-        return self.road is not None
+        return self.road_rate is not None
 
     def disembarking_passengers(self):
         """
@@ -80,7 +75,7 @@ class Bus:
             self.uid,
             self.capacity,
             self.stop.stop_id if self.stop else '-',
-            '{0}-{1}'.format(self.road.origin, self.road.destination) if self.road else '-',
+            self.road_rate if self.road_rate else '-',
             len(self.passengers)
         )
 
@@ -98,18 +93,6 @@ class Passenger:
         return 'Pax({0} - {1})'.format(self.orig, self.dest)
 
 
-
-class Road:
-
-    def __init__(self, origin, destination, rate):
-        self.origin = origin
-        self.destination = destination
-        self.rate = rate
-
-    def __repr__(self):
-        return 'Road({0} - {1} | {2})'.format(self.origin, self.destination, self.rate)
-
-
 class Route:
 
     def __init__(self, route_id, stops, bus_count, bus_capacity):
@@ -123,12 +106,12 @@ class Route:
             stop.bus_queue.append(bus)
             self.buses.append(bus)
 
-    def get_next_stop(self, stop_id):
+    def get_next_stop_id(self, stop_id):
         """
         Returns the next bus stop on this route for a stop_id.
         """
         next_idx = next(idx for idx, stop in enumerate(self.stops) if stop.stop_id == stop_id) + 1
-        return self.stops[next_idx % len(self.stops)]
+        return self.stops[next_idx % len(self.stops)].stop_id
 
     def __repr__(self):
         return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
@@ -178,8 +161,9 @@ class Network:
         Represent everything using sets as there is no reason for duplicates.
         """
         # TODO: Maybe use matrix when dense and list when sparse?
-        self.roads = defaultdict(set)
-            # <stop_id> : {(<road>, )*}
+        self.roads = {
+            # <stop_id, stop_id> : rate
+        }
         self.routes = {
             # <route_id> : <route>
         }
@@ -187,29 +171,22 @@ class Network:
             # <stop_id> : <stop>
         }
 
-    def get_route_by_id(self, route_id):
-        """
-        Return route given an id.
-        """
-        return self.routes[route_id]
-
-    def add_route(self, route_id, stop_ids, bus_count, bus_capacity):
+    def add_route(self, route_id, stop_ids, bus_count, cap):
         """
         Create a new route and add it to the network. There is no need
         to create the stops since for a valid network there will always
         be roads specifying them.
         """
         stops = map(Stop, stop_ids)
-        route = Route(route_id, stops, bus_count, bus_capacity)
+        route = Route(route_id, stops, bus_count, cap)
         self.stops = dict(zip(stop_ids, stops))
         self.routes[route_id] = route
 
-    def add_road(self, origin, destination, rate):
+    def add_road(self, orig, dest, rate):
         """
         Create a new road, its stops and add it to the network.
         """
-        road = Road(origin, destination, rate)
-        self.roads[origin].add(road)
+        self.roads[orig, dest] = rate
 
     def get_buses(self):
         """
@@ -247,4 +224,4 @@ class Network:
 Roads: {roads}
 
 Routes: {routes}
-        """.format(roads=[list(r) for r in self.roads.values()], routes=self.routes.values())
+        """.format(roads=[list(r) for r in self.roads], routes=self.routes.values())
