@@ -5,8 +5,8 @@ def log(msg, level=None, label=None):
     """
     Print to stdout
     """
-    if label is not None:
-        print("{0}: {1}".format(label, msg))
+    label = '{0}: '.format(label) if label else ''
+    print('{0}{1}'.format(label if label else '', msg))
 
 
 def weighted_choice(iterable, key=None):
