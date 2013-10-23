@@ -82,7 +82,7 @@ class World:
         if not events:
             events = self.possible_events()
 
-        probs = []
+        probs = [('new_passengers', None, self.new_passengers)]
         for key, objs in events.iteritems():
             for obj in objs:
                 try:
@@ -142,6 +142,25 @@ class World:
         next_stop_id = bus.route.get_next_stop_id(cur_stop_id)  # set next stop
         bus.road_rate = self.network.roads[cur_stop_id, next_stop_id]
         bus.stop = next_stop_id
+
+    def generate_passenger(self):
+        """
+        Generates a passenger on the network.
+        """
+        orig = choice(self.network.stops)
+
+        dests = []
+        for route in self.network.routes.itervalues():
+            try:
+                idx = route.stops.index(orig)
+                dests.extend(routes.stops[:idx])
+                dests.extend(routes.stops[idx+1:])
+            except ValueError:
+                continue
+
+        dest = choice(dests).stop_id
+        orig = orig.stop_id
+        return orig, Passenger(orig, dest)
 
     def validate(self):
         """
