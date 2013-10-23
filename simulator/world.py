@@ -1,9 +1,10 @@
 from collections import defaultdict
 from itertools import ifilterfalse, chain, imap
+from operator import itemgetter
 from random import random
 from math import log10
 
-from simulator.util import log
+from simulator.util import log, weighted_choice
 from simulator.models import Bus
 from simulator.parser import parse_file
 from simulator.events import BusArrival, BusDeparture
@@ -73,6 +74,20 @@ class World:
 
         mean = 1 / total_rate  # let's hope total_rate won't be 0
         return -mean * log10(random())
+
+    def choose_event(self, events=None):
+        """
+        Probabilistically choose one of the events.
+        """
+        if not events:
+            events = self.possible_events()
+
+        probs = []
+        for key, objs in events.iteritems():
+            for obj in objs:
+                probs.append((key, obj, getattr(self, key)))
+
+        print weighted_choice(probs, key=itemgetter(2))
 
     def arrival_ready_buses(self, buses=None):
         """
