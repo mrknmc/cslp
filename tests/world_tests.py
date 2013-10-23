@@ -60,7 +60,7 @@ stop time 20"""
         for p, s in zip(pax, stops):
             s.passengers = p
         passengers = set(pax[0] + pax[2])
-        boards = set(self.world.possible_events()['board'])
+        boards = set(self.world.possible_events()['boards'])
         self.assertEqual(passengers, boards)
 
     def test_possible_departs(self):
@@ -96,7 +96,7 @@ stop time 20"""
         roads = self.world.network.roads.values()
         buses = list(self.world.network.get_buses())
         for b, r in zip(buses[1:], roads[1:]):
-            b.road = list(r)[0]
+            b.road_rate = r
             b.stop = None
         buses = set(buses[1:])
         arrivals = set(self.world.possible_events()['arrivals'])
@@ -141,7 +141,7 @@ stop time 20"""
         stops = self.world.network.routes[1].stops
 
         # send bus 1.0 on the road
-        self.world.dequeue_bus(stops[0])
+        self.world.dequeue_bus(buses[0])
 
         # give bus 1.1 some passengers
         buses[1].passengers = [
