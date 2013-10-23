@@ -1,5 +1,15 @@
 
 
+def event_dispatch(time, event_id, *args, **kwargs):
+    return {
+        'arrivals': BusArrival,
+        'departs': BusDeparture,
+        'board': PassengerBoarded,
+        'disembarks': PassengerDisembarked,
+        'new_passengers': PassengerCreation
+    }[event_id](time, *args, **kwargs)
+
+
 class Event:
     """
     Parent Event class.
@@ -14,7 +24,8 @@ class BusArrival(Event):
     Event that represents a bus arriving at a certain bus stop.
     """
 
-    def __init__(self, bus):
+    def __init__(self, time, bus):
+        self.time = time
         self.bus = bus
 
     def __repr__(self):
@@ -30,7 +41,8 @@ class BusDeparture(Event):
     Event that represents a bus departing a certain bus stop.
     """
 
-    def __init__(self, bus):
+    def __init__(self, time, bus):
+        self.time = time
         self.bus = bus
 
     def __repr__(self):
@@ -41,13 +53,13 @@ class BusDeparture(Event):
         )
 
 
-
 class PassengerBoarded(Event):
     """
     Event that represents a passenger boarding a bus at a certain bus stop.
     """
 
-    def __init__(self, bus, passenger):
+    def __init__(self, time, bus, passenger):
+        self.time = time
         self.bus = bus
         self.destination = passenger.destination
 
@@ -66,7 +78,8 @@ class PassengerDisembarked(Event):
     Event that represents a passenger disembarking a bus at a certain bus stop.
     """
 
-    def __init__(self, bus):
+    def __init__(self, time, bus):
+        self.time = time
         self.bus = bus
 
     def __repr__(self):
@@ -82,7 +95,8 @@ class PassengerCreation(Event):
     Event that represents a passenger being created at the origin station with destination.
     """
 
-    def __init__(self, origin, destination):
+    def __init__(self, time, origin, destination):
+        self.time = time
         self.origin = origin
         self.destination = destination
 
