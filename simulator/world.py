@@ -23,7 +23,7 @@ class World:
         for key, val in params.iteritems():  # this sets all the rates and flags
             setattr(self.world, key, val)
 
-    def possible_events(self):
+    def possible_events(self, as_list=False):
         """
         Get all buses that are ready for departure.
         Get all buses that are ready for arrival.
@@ -33,7 +33,6 @@ class World:
 
         Get a characted creation.
         """
-        # TODO: Maybe move this function into Network object
         buses = list(self.network.get_buses())
         stops = list(self.network.get_stops())
         events = {
@@ -42,6 +41,9 @@ class World:
             'departs': self.departure_ready_buses(buses=buses),
             'arrivals': self.arrival_ready_buses(buses=buses),
         }
+        if list:
+            for key, val in events.iteritems():
+                events[key] = list(val)
         return events
 
     def calculate_total_rate(self, events=None):
