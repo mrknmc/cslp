@@ -10,7 +10,7 @@ def event_dispatch(time, event_id, *args, **kwargs):
     }[event_id](time, *args, **kwargs)
 
 
-class BusArrival(Event):
+class BusArrival:
     """
     Event that represents a bus arriving at a certain bus stop.
     """
@@ -33,7 +33,7 @@ class BusArrival(Event):
         world.enqueue_bus(self.bus)
 
 
-class BusDeparture(Event):
+class BusDeparture:
     """
     Event that represents a bus departing a certain bus stop.
     """
@@ -57,7 +57,7 @@ class BusDeparture(Event):
         world.dequeue_bus(bus)
 
 
-class PassengerBoarded(Event):
+class PassengerBoarded:
     """
     Event that represents a passenger boarding a bus at a certain bus stop.
     """
@@ -86,7 +86,7 @@ class PassengerBoarded(Event):
         self.bus.passengers.append(self.passenger)
 
 
-class PassengerDisembarked(Event):
+class PassengerDisembarked:
     """
     Event that represents a passenger disembarking a bus at a certain bus stop.
     """
@@ -110,7 +110,7 @@ class PassengerDisembarked(Event):
         self.bus.passengers.remove(self.passenger)
 
 
-class PassengerCreation(Event):
+class PassengerCreation:
     """
     Event that represents a passenger being created at the origin station with destination.
     """
