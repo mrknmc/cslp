@@ -22,7 +22,7 @@ class World:
         network, params = parse_file(filename)
         self.network = network
         for key, val in params.iteritems():  # this sets all the rates and flags
-            setattr(self.world, key, val)
+            setattr(self, key, val)
 
     def possible_events(self, as_list=False):
         """
@@ -85,7 +85,12 @@ class World:
         probs = []
         for key, objs in events.iteritems():
             for obj in objs:
-                probs.append((key, obj, getattr(self, key)))
+                try:
+                    probs.append((key, obj, getattr(self, key)))
+                except AttributeError:
+                    if key != 'arrivals':
+                        raise
+                    probs.append((key, obj, obj.road.rate))
 
         key, obj, rate = weighted_choice(probs, key=itemgetter(2))
         event = event_dispatch(self.time, key, obj)
