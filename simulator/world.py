@@ -32,13 +32,13 @@ class World:
         Get all passengers that are ready to board a bus.
         Get all passengers that are ready to disembark a bus.
 
-        Get a character creation.
+        Get a characted creation.
         """
         buses = list(self.network.get_buses())
         stops = list(self.network.get_stops())
         events = {
             'disembarks': self.disembarking_passengers(buses=buses),
-            'boards': self.boarding_passengers(stops=stops),
+            'board': self.boarding_passengers(stops=stops),
             'departs': self.departure_ready_buses(buses=buses),
             'arrivals': self.arrival_ready_buses(buses=buses),
         }
@@ -61,7 +61,7 @@ class World:
             except AttributeError:
                 if key != 'arrivals':
                     raise
-                total_rate += reduce(lambda t, b: t + b.road_rate, objs, 0)
+                total_rate += reduce(lambda t, b: t + b.road.rate, objs, 0)
 
         return total_rate + self.new_passengers
 
@@ -90,7 +90,7 @@ class World:
                 except AttributeError:
                     if key != 'arrivals':
                         raise
-                    probs.append((key, obj, obj.road_rate))
+                    probs.append((key, obj, obj.road.rate))
 
         key, obj, rate = weighted_choice(probs, key=itemgetter(2))
         event = event_dispatch(self.time, key, obj)
@@ -134,14 +134,24 @@ class World:
         pax_gens = (stop.boarding_passengers() for stop in stops)
         return chain(*pax_gens)
 
-    def dequeue_bus(self, bus):
+    def enqueue_bus(self, bus):
+        """
+        A new bus arrives to the queue.
+        """
+        stop = bus.stop
+        bus.road = None
+
+    def dequeue_bus(self, stop, bus=None):
         """
         The first bus departs from the queue.
         """
-        cur_stop_id = bus.stop.stop_id
-        next_stop_id = bus.route.get_next_stop_id(cur_stop_id)  # set next stop
-        bus.road_rate = self.network.roads[cur_stop_id, next_stop_id]
-        bus.stop = next_stop_id
+        if not bus:
+            bus = stop.bus_queue.pop(0)
+        cur_stop = bus.stop.stop_id
+        next_stop = bus.route.get_next_stop(stop.stop_id)  # set next stop
+        next_roads = self.network.roads[cur_stop]
+        bus.road = next(road for road in next_roads if road.destination == next_stop.stop_id)
+        bus.stop = next_stop
 
     def generate_passenger(self):
         """
@@ -169,9 +179,9 @@ class World:
         Next, validate the network.
         """
         if any([
-            self.boards is None,
-            self.disembarks is None,
-            self.departs is None,
+            self.board is None,
+            self.disembark is None,
+            self.depart is None,
             self.new_passengers is None,
             self.stop_time is None
         ]):
@@ -182,6 +192,7 @@ class World:
         """
         Validate and then start the run loop.
         """
+        # self.validate()
         self.run()
 
     def run(self):
