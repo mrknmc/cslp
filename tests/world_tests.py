@@ -2,6 +2,7 @@ import unittest
 
 from random import seed, random
 from math import log10
+from itertools import repeat
 
 from simulator.world import World
 from simulator.models import Passenger
@@ -39,10 +40,10 @@ stop time 20"""
             [Passenger(2, 3), Passenger(1, 2)],
             [Passenger(3, 2), Passenger(1, 3)],
         )
-        buses = self.world.network.get_buses()
+        buses = list(self.world.network.get_buses())
         for p, b in zip(pax, buses):
             b.passengers = p
-        passengers = set([pax[1][1], pax[2][1]])
+        passengers = set([(pax[1][1], buses[1]), (pax[2][1], buses[2])])
         disembarks = set(self.world.possible_events()['disembarks'])
         self.assertEqual(passengers, disembarks)
         self.assertEqual(passengers, disembarks)
@@ -57,9 +58,10 @@ stop time 20"""
             [Passenger(3, 2), Passenger(3, 2)],
         )
         stops = self.world.network.get_stops()
+        buses = list(self.world.network.get_buses())
         for p, s in zip(pax, stops):
             s.passengers = p
-        passengers = set(pax[0] + pax[2])
+        passengers = set(zip(pax[0], repeat(buses[0])) + zip(pax[2], repeat(buses[2])))
         boards = set(self.world.possible_events()['boards'])
         self.assertEqual(passengers, boards)
 
@@ -85,7 +87,7 @@ stop time 20"""
         for s, p in zip(stops, stop_pax):
             s.passengers = p
 
-        buses = set([buses[1]])
+        buses = set([(buses[1], )])
         departs = set(self.world.possible_events()['departs'])
         self.assertEqual(buses, departs)
 
@@ -97,8 +99,7 @@ stop time 20"""
         buses = list(self.world.network.get_buses())
         for b, r in zip(buses[1:], roads[1:]):
             b.road_rate = r
-            b.stop = None
-        buses = set(buses[1:])
+        buses = set((bus, ) for bus in buses[1:])
         arrivals = set(self.world.possible_events()['arrivals'])
         self.assertEqual(buses, arrivals)
 
