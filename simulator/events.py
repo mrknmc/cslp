@@ -43,11 +43,12 @@ class BusDeparture(object):
     def __init__(self, time, bus):
         self.time = time
         self.bus = bus
+        self.stop = bus.stop
 
     def __repr__(self):
         return 'Bus {bus} leaves stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.bus.stop,
+            stop=self.stop,
             time=self.time
         )
 
