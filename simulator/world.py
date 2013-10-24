@@ -41,6 +41,7 @@ class World(object):
             'boards': self.boarding_passengers(stops=stops),
             'departs': self.departure_ready_buses(buses=buses),
             'arrivals': self.arrival_ready_buses(buses=buses),
+            'new_passengers': [(None, )],
         }
         if list:
             for key, val in events.iteritems():
@@ -55,15 +56,15 @@ class World(object):
             events = self.possible_events()
 
         total_rate = 0
-        for key, objs in events.iteritems():
+        for key, tups in events.iteritems():
             try:
-                total_rate += getattr(self, key) * sum(1 for o in objs)
+                total_rate += getattr(self, key) * sum(1 for tup in tups)
             except AttributeError:
                 if key != 'arrivals':
                     raise
-                total_rate += reduce(lambda t, b: t + b.road_rate, objs, 0)
+                total_rate += reduce(lambda t, b: t + b[0].road_rate, tups, 0)
 
-        return total_rate + self.new_passengers
+        return total_rate
 
     def sample_delay(self, total_rate=None):
         """
@@ -75,26 +76,26 @@ class World(object):
         mean = 1 / total_rate  # let's hope total_rate won't be 0
         return -mean * log10(random())
 
-    def choose_event(self, events=None):
+    def choose_event(self, events=None, total_rate=None):
         """
         Probabilistically choose one of the events.
         """
         if not events:
             events = self.possible_events()
 
-        probs = [('new_passengers', None, self.new_passengers)]
-        for key, objs in events.iteritems():
-            for obj in objs:
-                try:
-                    probs.append((key, obj, getattr(self, key)))
-                except AttributeError:
-                    if key != 'arrivals':
-                        raise
-                    probs.append((key, obj, obj.road_rate))
+        if not total_rate:
+            total_rate = self.calculate_total_rate(events=events)
 
-        key, obj, rate = weighted_choice(probs, key=itemgetter(2))
-        event = event_dispatch(self.time, key, obj)
-        return event
+        rand = random() * total_rate
+
+        for key, tups in events.iteritems():
+            for tup in tups:
+                try:
+                    rand -= getattr(self, key)
+                except AttributeError:
+                    rand -= tup[0].road_rate
+                if rand < 0:
+                    return event_dispatch(self.time, key, *tup)
 
     def arrival_ready_buses(self, buses=None):
         """
@@ -103,7 +104,7 @@ class World(object):
         if not buses:
             buses = self.network.get_buses()
 
-        return (bus for bus in buses if bus.in_motion)
+        return ((bus, ) for bus in buses if bus.in_motion)
 
     def departure_ready_buses(self, buses=None):
         """
@@ -112,7 +113,7 @@ class World(object):
         if not buses:
             buses = self.network.get_buses()
 
-        return (bus for bus in buses if bus.ready_for_departure())
+        return ((bus, ) for bus in buses if bus.ready_for_departure())
 
     def disembarking_passengers(self, buses=None):
         """
@@ -138,10 +139,30 @@ class World(object):
         """
         The first bus departs from the queue.
         """
-        cur_stop_id = bus.stop.stop_id
-        next_stop_id = bus.route.get_next_stop_id(cur_stop_id)  # set next stop
-        bus.road_rate = self.network.roads[cur_stop_id, next_stop_id]
-        bus.stop = next_stop_id
+        cur_stop = bus.stop
+        cur_stop.bus_queue.remove(bus)
+        next_stop = bus.route.get_next_stop(cur_stop.stop_id)  # set next stop
+        bus.road_rate = self.network.roads[cur_stop.stop_id, next_stop.stop_id]
+        bus.stop = next_stop
+
+    def generate_passenger(self):
+        """
+        Generates a passenger on the network.
+        """
+        orig = choice(self.network.stops.values())
+
+        dests = []
+        for route in self.network.routes.itervalues():
+            try:
+                idx = route.stops.index(orig)
+                dests.extend(route.stops[:idx])
+                dests.extend(route.stops[idx+1:])
+            except ValueError:
+                continue
+
+        dest = choice(dests).stop_id
+        orig = orig.stop_id
+        return orig, Passenger(orig, dest)
 
     def validate(self):
         """
@@ -173,7 +194,7 @@ class World(object):
             events = self.possible_events(as_list=True)
             total_rate = self.calculate_total_rate(events=events)
             delay = self.sample_delay(total_rate=total_rate)
-            event = self.choose_event(events)
-            log(event)
+            event = self.choose_event(events, total_rate=total_rate)
             event.update_world(self)
+            log(event)
             self.time += delay
