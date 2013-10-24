@@ -1,10 +1,10 @@
 from simulator.util import log
 
-from itertools import cycle
+from itertools import cycle, izip, repeat
 from collections import defaultdict
 
 
-class Bus:
+class Bus(object):
 
     def __init__(self, route, bus_id, capacity, stop, road_rate):
         """
@@ -83,7 +83,7 @@ class Bus:
         return '{0}'.format(self.uid)
 
 
-class Passenger:
+class Passenger(object):
 
     def __init__(self, orig, dest):
         self.orig = orig
@@ -93,7 +93,7 @@ class Passenger:
         return 'Pax({0} - {1})'.format(self.orig, self.dest)
 
 
-class Route:
+class Route(object):
 
     def __init__(self, route_id, stops, bus_count, bus_capacity):
         self.route_id = route_id
@@ -120,7 +120,7 @@ class Route:
         return '{0}'.format(self.route_id)
 
 
-class Stop:
+class Stop(object):
 
     def __init__(self, stop_id):
         self.stop_id = stop_id
@@ -151,7 +151,7 @@ class Stop:
         return str(self.stop_id)
 
 
-class Network:
+class Network(object):
     """
     The object representing the bus network.
     """
