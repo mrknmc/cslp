@@ -2,6 +2,7 @@ import re
 
 from simulator.models import Network
 
+
 INT_RX = r'\d+'
 FLOAT_RX = r'(\d+(\.\d*)?|\.\d+)'
 NEWLINE_COMMENT_RX = r'^(\n|#.*\n)$'  # matches newline or a comment
