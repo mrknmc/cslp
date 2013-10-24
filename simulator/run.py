@@ -1,6 +1,5 @@
 from world import World
-import os
-import sys
+import os, sys
 
 
 def main(argv):
