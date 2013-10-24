@@ -1,16 +1,16 @@
 from collections import defaultdict
 from itertools import ifilterfalse, chain, imap
 from operator import itemgetter
-from random import random
+from random import random, choice
 from math import log10
 
 from simulator.util import log, weighted_choice
-from simulator.models import Bus
+from simulator.models import Passenger
 from simulator.parser import parse_file
 from simulator.events import event_dispatch
 
 
-class World:
+class World(object):
 
     def __init__(self, filename=None):
         """
