@@ -11,5 +11,5 @@ To run the simulator just run `python run.py` in the simulator directory.
 
 ### Optional arguments
 You can supply optional arguments:
-1. input file - `python run.py tests/test1`
-2. output file - `python run.py tests/test1 out.txt`
+  1. input file - `python run.py tests/test1`
+  2. output file - `python run.py tests/test1 out.txt`
