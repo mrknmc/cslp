@@ -48,7 +48,9 @@ class Bus(object):
         """
         Return passengers that have arrived at their destination and want to disembark.
         """
-        return (pax for pax in self.passengers if pax.dest == self.stop.stop_id)
+        for pax, bus in izip(self.passengers, repeat(self)):
+            if pax.dest == self.stop.stop_id:
+                yield pax, bus
 
     def full_capacity(self):
         """
@@ -136,11 +138,14 @@ class Stop(object):
         Returns all the passengers ready to board.
         """
         if not bus:
-            try:
-                bus = self.bus_queue[0]
-            except IndexError:
-                return []
-        return filter(bus.can_satisfy, self.passengers)
+            for bus in self.bus_queue:
+                for pax in self.passengers:
+                    if bus.can_satisfy(pax):
+                        yield pax, bus
+        else:
+            for pax in self.passengers:
+                if bus.can_satisfy(pax):
+                    yield pax, bus
 
     def __repr__(self):
         return 'Stop({0} | B: {1} | P: {2})'.format(self.stop_id, self.bus_queue, self.passengers)
