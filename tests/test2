@@ -1,0 +1,19 @@
+route 1 stops 1 2 3 4 5 6 buses 10 capacity 50
+route 2 stops 2 4 8 9 3 6 buses 7 capacity 40
+road 1 2 0.3
+road 2 3 0.5
+road 3 4 0.8
+road 4 5 0.2
+road 5 6 0.5
+road 6 1 0.2
+road 2 4 0.1
+road 4 8 0.6
+road 8 9 0.7
+road 9 3 0.2
+road 3 6 0.4
+road 6 2 0.3
+board 0.5
+disembarks 0.6
+departs 0.5
+new passengers 4
+stop time 1000
