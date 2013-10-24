@@ -30,7 +30,6 @@ class TestBus(unittest.TestCase):
         stop = self.stops[0]
         bus = Bus(1, None, 20, stop, None)
 
-        bus.in_motion = False
         bus.passengers = [Passenger(4, 5)] * 20
         self.assertTrue(bus.ready_for_departure())
 
