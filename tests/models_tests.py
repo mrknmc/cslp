@@ -54,8 +54,8 @@ class TestBus(unittest.TestCase):
 
         exit_pax = list(bus1.disembarking_passengers())
 
-        self.assertTrue(bus1.passengers[0] in exit_pax)
-        self.assertTrue(bus1.passengers[2] in exit_pax)
+        self.assertTrue(bus1.passengers[0], bus1 in exit_pax)
+        self.assertTrue(bus1.passengers[2], bus2 in exit_pax)
         self.assertEqual(len(exit_pax), 2)
 
         exit_pax = list(bus2.disembarking_passengers())
@@ -73,9 +73,6 @@ class TestBus(unittest.TestCase):
 
         bus.passengers.append(Passenger(4, 5))
         self.assertTrue(bus.full_capacity())
-
-        bus.passengers.append(Passenger(4, 5))
-        self.assertRaises(Exception, bus.full_capacity)
 
     def test_no_disembarks(self):
         """
