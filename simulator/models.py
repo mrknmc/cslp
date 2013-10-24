@@ -24,6 +24,10 @@ class Bus(object):
     def uid(self):
         return '{0}.{1}'.format(self.route.route_id, self.bus_id)
 
+    @property
+    def in_motion(self):
+        return self.road_rate is not None
+
     def can_satisfy(self, passenger):
         """
         Returns True if the bus can satisfy passenger's destination.
@@ -40,10 +44,6 @@ class Bus(object):
                (self.full_capacity() or self.no_boarders()) and \
                self.no_disembarks()
 
-    @property
-    def in_motion(self):
-        return self.road_rate is not None
-
     def disembarking_passengers(self):
         """
         Return passengers that have arrived at their destination and want to disembark.
@@ -54,9 +54,7 @@ class Bus(object):
         """
         Returns true if the number of passengers is equal to the capacity.
         """
-        if len(self.passengers) <= self.capacity:
-            return len(self.passengers) == self.capacity
-        raise Exception('More passengers than allowed!')
+        return len(self.passengers) == self.capacity
 
     def no_boarders(self):
         """
@@ -74,7 +72,7 @@ class Bus(object):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
             self.uid,
             self.capacity,
-            self.stop.stop_id if self.stop else '-',
+            self.stop.stop_id,
             self.road_rate if self.road_rate else '-',
             len(self.passengers)
         )
@@ -106,12 +104,12 @@ class Route(object):
             stop.bus_queue.append(bus)
             self.buses.append(bus)
 
-    def get_next_stop_id(self, stop_id):
+    def get_next_stop(self, stop_id):
         """
         Returns the next bus stop on this route for a stop_id.
         """
         next_idx = next(idx for idx, stop in enumerate(self.stops) if stop.stop_id == stop_id) + 1
-        return self.stops[next_idx % len(self.stops)].stop_id
+        return self.stops[next_idx % len(self.stops)]
 
     def __repr__(self):
         return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
