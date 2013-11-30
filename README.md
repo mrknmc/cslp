@@ -10,9 +10,9 @@ Right now, the simulator should work on valid input files. That is, it does not 
 To run the simulator just run `python run.py` in the simulator directory.
 
 ### Running the unit tests
-Run any of the test files in the tests directory like so `python models_tests.py`.
+Run any of the test files in the tests directory like so `python tests/models_tests.py`.
 
 ### Optional arguments
-You can supply optional arguments:
-  1. input file - `python run.py tests/test1`
-  2. output file - `python run.py tests/test1 out.txt`
+You can supply the following arguments arguments:
+  1. input file (required) - `python run.py tests/test1` will take input from file tests/test1
+  2. output file (optional) - `python run.py tests/test1 out.txt` will output to file out.txt

@@ -1,4 +1,4 @@
-from simulator.util import log
+from util import log
 
 from itertools import cycle, izip, repeat
 from collections import defaultdict

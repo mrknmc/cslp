@@ -1,4 +1,4 @@
-from simulator.models import Passenger
+from models import Passenger
 
 
 def event_dispatch(time, event_id, *args, **kwargs):

@@ -4,10 +4,10 @@ from operator import itemgetter
 from random import random, choice
 from math import log10
 
-from simulator.util import log, weighted_choice
-from simulator.models import Passenger
-from simulator.parser import parse_file
-from simulator.events import event_dispatch
+from util import log, weighted_choice
+from models import Passenger
+from parser import parse_file
+from events import event_dispatch
 
 
 class World(object):

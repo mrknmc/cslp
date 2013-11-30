@@ -1,6 +1,6 @@
 import re
 
-from simulator.models import Network
+from models import Network
 
 
 INT_RX = r'\d+'
