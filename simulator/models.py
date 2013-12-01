@@ -22,46 +22,44 @@ class Bus(object):
     def in_motion(self):
         return self.road_rate is not None
 
-    def can_satisfy(self, dest):
+    @property
+    def departure_ready(self):
+        """
+        Bus is ready for departure when:
+            - it's not in motion
+            - no one wants to disembark the bus
+            - it has either full capacity or no passengers want to board.
+        """
+        return (
+            not self.in_motion and
+            (self.full or list(self.boards()) == []) and
+            list(self.disembarks()) == []
+        )
+
+    @property
+    def full(self):
+        """
+        Returns true if the bus is full.
+        """
+        return sum(self.pax_dests.itervalues()) == self.capacity
+
+    def satisfies(self, dest):
         """
         Returns True if the bus can satisfy passenger's destination.
         """
         return dest in (stop.stop_id for stop in self.route.stops)
 
-    def ready_for_departure(self):
-        """
-        Bus is ready for departure when it's not in motion, no one wants to disembark the bus
-        and it has either full capacity or the bus stop has no passengers who want to board.
-        """
-        return (not self.in_motion) and \
-               (self.full_capacity() or self.no_boarders()) and \
-               self.no_disembarks()
-
-    def disembarking_passengers(self):
+    def disembarks(self):
         """
         Return passengers that have arrived at their destination and want to disembark.
         """
-        for pax, bus in izip(self.passengers, repeat(self)):
-            if pax.dest == self.stop.stop_id:
-                yield pax, bus
+        return ifilter(lambda i: i[0] == self.stop.stop_id, self.pax_dests.iteritems())
 
-    def full_capacity(self):
+    def boards(self):
         """
-        Returns true if the number of passengers is equal to the capacity.
+        Return passengers that would like to board this bus.
         """
-        return len(self.passengers) == self.capacity
-
-    def no_boarders(self):
-        """
-        Returns true if there are no passengers who want to board at the current bus stop.
-        """
-        return list(self.stop.boarding_passengers(bus=self)) == []
-
-    def no_disembarks(self):
-        """
-        Returns true if there are no passengers who want to disembark at the current bus stop.
-        """
-        return list(self.disembarking_passengers()) == []
+        return ifilter(lambda i: self.satisfies(i[0]), self.stop.pax_dests.iteritems())
 
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
@@ -89,7 +87,7 @@ class Route(object):
             stop.bus_queue.append(bus)
             self.buses.append(bus)
 
-    def get_next_stop(self, stop_id):
+    def next_stop(self, stop_id):
         """
         Returns the next bus stop on this route for a stop_id.
         """
@@ -110,25 +108,11 @@ class Stop(object):
         self.bus_queue = []
         self.pax_dests = defaultdict(int)
 
-    def departing_buses(self):
+    def departs(self):
         """
         Returns all the buses ready for departure.
         """
-        return filter(Bus.ready_for_departure, self.bus_queue)
-
-    def boarding_passengers(self, bus=None):
-        """
-        Returns all the passengers ready to board.
-        """
-        if not bus:
-            for bus in self.bus_queue:
-                for pax in self.passengers:
-                    if bus.can_satisfy(pax):
-                        yield pax, bus
-        else:
-            for pax in self.passengers:
-                if bus.can_satisfy(pax):
-                    yield pax, bus
+        return ifilter(Bus.departure_ready, self.bus_queue)
 
     def __repr__(self):
         return 'Stop({0} | B: {1} | P: {2})'.format(
