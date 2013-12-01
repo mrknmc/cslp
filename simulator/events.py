@@ -100,6 +100,8 @@ class BusArrival(object):
     Event that represents a bus arriving at a certain bus stop.
     """
 
+    type = 'arrivals'
+
     def __init__(self, time, bus):
         self.time = time
         self.bus = bus
@@ -124,6 +126,8 @@ class BusDeparture(object):
     Event that represents a bus departing a certain bus stop.
     """
 
+    type = 'departs'
+
     def __init__(self, time, bus):
         self.time = time
         self.bus = bus
@@ -147,6 +151,8 @@ class PassengerBoarded(object):
     """
     Event that represents a passenger boarding a bus at a certain bus stop.
     """
+
+    type = 'boards'
 
     def __init__(self, time, dest, bus):
         self.time = time
@@ -177,6 +183,8 @@ class PassengerDisembarked(object):
     Event that represents a passenger disembarking a bus at a certain bus stop.
     """
 
+    type = 'disembarks'
+
     def __init__(self, time, bus):
         self.time = time
         self.bus = bus
@@ -200,6 +208,8 @@ class PassengerCreation(object):
     """
     Event that represents a passenger being created at the origin station with destination.
     """
+
+    type = 'new_passengers'
 
     def __init__(self, time, *args):
         self.time = time
