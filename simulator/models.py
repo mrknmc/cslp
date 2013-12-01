@@ -1,6 +1,4 @@
-from util import log
-
-from itertools import cycle, izip, repeat
+from itertools import cycle, izip, ifilter
 from collections import defaultdict
 
 
@@ -14,15 +12,11 @@ class Bus(object):
         Also initialize the number of passengers to 0.
         """
         self.route = route
-        self.bus_id = bus_id
+        self.bus_id = '{0}.{1}'.format(self.route.route_id, self.bus_id)
         self.capacity = capacity
         self.pax_dests = defaultdict(int)
         self.stop = stop
         self.road_rate = road_rate
-
-    @property
-    def uid(self):
-        return '{0}.{1}'.format(self.route.route_id, self.bus_id)
 
     @property
     def in_motion(self):
@@ -71,7 +65,7 @@ class Bus(object):
 
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
-            self.uid,
+            self.bus_id,
             self.capacity,
             self.stop.stop_id,
             self.road_rate if self.road_rate else '-',
@@ -90,7 +84,7 @@ class Route(object):
         self.stops = stops
 
         # Create all the buses
-        for bus_id, stop in zip(range(bus_count), cycle(stops)):
+        for bus_id, stop in izip(range(bus_count), cycle(stops)):
             bus = Bus(self, bus_id, bus_capacity, stop, None)
             stop.bus_queue.append(bus)
             self.buses.append(bus)
