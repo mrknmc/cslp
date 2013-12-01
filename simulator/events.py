@@ -1,5 +1,3 @@
-from models import Passenger
-
 
 def event_dispatch(time, event_id, *args, **kwargs):
     return {
@@ -43,12 +41,11 @@ class BusDeparture(object):
     def __init__(self, time, bus):
         self.time = time
         self.bus = bus
-        self.stop = bus.stop
 
     def __repr__(self):
         return 'Bus {bus} leaves stop {stop} at time {time}'.format(
             bus=self.bus,
-            stop=self.stop,
+            stop=self.bus.stop,
             time=self.time
         )
 
@@ -65,17 +62,17 @@ class PassengerBoarded(object):
     Event that represents a passenger boarding a bus at a certain bus stop.
     """
 
-    def __init__(self, time, passenger, bus):
+    def __init__(self, time, dest, bus):
         self.time = time
         self.bus = bus
-        self.passenger = passenger
+        self.dest = dest
 
     def __repr__(self):
         return 'Passenger boards bus {bus} at stop {stop} with destination \
-{destination} at time {time}'.format(
+{dest} at time {time}'.format(
             bus=self.bus,
             stop=self.bus.stop,
-            destination=self.passenger.dest,
+            dest=self.dest,
             time=self.time
         )
 
@@ -85,8 +82,8 @@ class PassengerBoarded(object):
         Remove the passenger from the bus stop and board him on the bus.
         """
         stop = self.bus.stop
-        stop.passengers.remove(self.passenger)
-        self.bus.passengers.append(self.passenger)
+        stop.pax_dests[self.dest] -= 1
+        self.bus.pax_dests[self.dest] += 1
 
 
 class PassengerDisembarked(object):
@@ -94,10 +91,9 @@ class PassengerDisembarked(object):
     Event that represents a passenger disembarking a bus at a certain bus stop.
     """
 
-    def __init__(self, time, passenger, bus):
+    def __init__(self, time, bus):
         self.time = time
         self.bus = bus
-        self.passenger = passenger
 
     def __repr__(self):
         return 'Passenger disembarks bus {bus} at stop {stop} at time {time}'.format(
@@ -111,7 +107,7 @@ class PassengerDisembarked(object):
         Updates the world based on this event.
         Remove the passenger from the bus.
         """
-        self.bus.passengers.remove(self.passenger)
+        self.bus.pax_dests[self.bus.stop] -= 1
 
 
 class PassengerCreation(object):
@@ -125,8 +121,8 @@ class PassengerCreation(object):
     def __repr__(self):
         return 'A new passenger enters at stop {origin} with destination {dest} \
 at time {time}'.format(
-            origin=self.passenger.orig,
-            dest=self.passenger.dest,
+            origin=self.orig,
+            dest=self.dest,
             time=self.time
         )
 
@@ -135,8 +131,7 @@ at time {time}'.format(
         Updates the world based on this event.
         Generate a new passenger on some stop that can satisfy his destination.
         """
-        orig, passenger = world.generate_passenger()
-        self.passenger = passenger
-        world.network.stops[orig].passengers.append(passenger)
+        self.orig, self.dest = world.generate_passenger()
+        world.network.stops[self.orig].pax_dests[self.dest] += 1
 
 
