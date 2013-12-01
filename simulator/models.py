@@ -16,7 +16,7 @@ class Bus(object):
         self.route = route
         self.bus_id = bus_id
         self.capacity = capacity
-        self.passengers = []
+        self.pax_dests = defaultdict(int)
         self.stop = stop
         self.road_rate = road_rate
 
@@ -28,12 +28,11 @@ class Bus(object):
     def in_motion(self):
         return self.road_rate is not None
 
-    def can_satisfy(self, passenger):
+    def can_satisfy(self, dest):
         """
         Returns True if the bus can satisfy passenger's destination.
         """
-        stop_ids = map(lambda s: s.stop_id, self.route.stops)
-        return (passenger.dest in stop_ids)
+        return dest in (stop.stop_id for stop in self.route.stops)
 
     def ready_for_departure(self):
         """
@@ -76,21 +75,11 @@ class Bus(object):
             self.capacity,
             self.stop.stop_id,
             self.road_rate if self.road_rate else '-',
-            len(self.passengers)
+            sum(self.pax_dests.itervalues())
         )
 
     def __str__(self):
         return '{0}'.format(self.uid)
-
-
-class Passenger(object):
-
-    def __init__(self, orig, dest):
-        self.orig = orig
-        self.dest = dest
-
-    def __repr__(self):
-        return 'Pax({0} - {1})'.format(self.orig, self.dest)
 
 
 class Route(object):
@@ -125,7 +114,7 @@ class Stop(object):
     def __init__(self, stop_id):
         self.stop_id = stop_id
         self.bus_queue = []
-        self.passengers = []
+        self.pax_dests = defaultdict(int)
 
     def departing_buses(self):
         """
@@ -148,7 +137,11 @@ class Stop(object):
                     yield pax, bus
 
     def __repr__(self):
-        return 'Stop({0} | B: {1} | P: {2})'.format(self.stop_id, self.bus_queue, self.passengers)
+        return 'Stop({0} | B: {1} | P: {2})'.format(
+            self.stop_id,
+            self.bus_queue,
+            sum(self.pax_dests.itervalues())
+        )
 
     def __str__(self):
         return str(self.stop_id)
