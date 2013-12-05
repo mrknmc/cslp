@@ -4,7 +4,7 @@ from collections import Counter
 
 class Bus(object):
 
-    def __init__(self, route, bus_id, capacity, stop, road_rate):
+    def __init__(self, route, bus_id, capacity, stop):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
@@ -12,11 +12,11 @@ class Bus(object):
         Also initialize the number of passengers to 0.
         """
         self.route = route
-        self.bus_id = '{0}.{1}'.format(self.route.route_id, self.bus_id)
+        self.bus_id = '{0}.{1}'.format(route.route_id, bus_id)
         self.capacity = capacity
         self.pax_dests = Counter()
         self.stop = stop
-        self.road_rate = road_rate
+        self.road_rate = None
 
     @property
     def in_motion(self):
