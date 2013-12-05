@@ -36,12 +36,11 @@ class Bus(object):
             list(self.disembarks()) == []
         )
 
-    @property
-    def full(self):
+    def full(self, offset=0):
         """
         Returns true if the bus is full.
         """
-        return sum(self.pax_dests.itervalues()) == self.capacity
+        return sum(self.pax_dests.itervalues()) == self.capacity + offset
 
     def satisfies(self, dest):
         """
