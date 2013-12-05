@@ -143,24 +143,8 @@ class Network(object):
         """
         stops = map(Stop, stop_ids)
         route = Route(route_id, stops, bus_count, cap)
-        self.stops = dict(zip(stop_ids, stops))
+        self.stops = dict(izip(stop_ids, stops))
         self.routes[route_id] = route
-
-
-    def get_buses(self):
-        """
-        Returns all the buses in the network.
-        """
-        for route in self.routes.itervalues():
-            for bus in route.buses:
-                yield bus
-
-    def get_stops(self):
-        """
-        Returns all the stops in the network.
-        """
-        for stop in self.stops.itervalues():
-            yield stop
 
     def validate(self):
         """
