@@ -14,8 +14,8 @@ RATES_RX = (
     r'^disembarks (?P<disembarks>{0})$'.format(FLOAT_RX),
     r'^departs (?P<departs>{0})$'.format(FLOAT_RX),
     r'^new passengers (?P<new_passengers>{0})$'.format(FLOAT_RX),
-    r'^stop time (?P<stop_time>{0})$'.format(FLOAT_RX),
 )
+STOP_TIME_RX = r'^stop time (?P<stop_time>{0})$'.format(FLOAT_RX)
 IGNORE_WARN_RX = r'^ignore warnings$'
 OPTIMIZE_RX = r'^optimise parameters$'
 
@@ -58,6 +58,11 @@ def parse_file(filename):
                     params.update(**match)
                     break
             if match:
+                continue
+
+            match = rxmatch(STOP_TIME_RX, line)
+            if match:
+                params['stop_time'] = match['stop_time']
                 continue
 
             if rxmatch(IGNORE_WARN_RX, line):
