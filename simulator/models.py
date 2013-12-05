@@ -128,9 +128,6 @@ class Network(object):
         Represent everything using sets as there is no reason for duplicates.
         """
         # TODO: Maybe use matrix when dense and list when sparse?
-        self.roads = {
-            # <stop_id, stop_id> : rate
-        }
         self.routes = {
             # <route_id> : <route>
         }
@@ -149,11 +146,6 @@ class Network(object):
         self.stops = dict(zip(stop_ids, stops))
         self.routes[route_id] = route
 
-    def add_road(self, orig, dest, rate):
-        """
-        Create a new road, its stops and add it to the network.
-        """
-        self.roads[orig, dest] = rate
 
     def get_buses(self):
         """
