@@ -63,7 +63,7 @@ def parse_file(filename):
 
             match = rxmatch(STOP_TIME_RX, line)
             if match:
-                params['stop_time'] = match['stop_time']
+                params.update(**match)
                 continue
 
             if rxmatch(IGNORE_WARN_RX, line):

@@ -8,6 +8,7 @@ def parse_file(input_str):
     """
     network = Network()
     params = {}
+    rates = {}
     with BytesIO(input_str) as f:
         for line_no, line in enumerate(f, start=1):
             line = line.rstrip('\n')  # get rid of newline
@@ -19,15 +20,20 @@ def parse_file(input_str):
 
             match = rxmatch(ROAD_RX, line, ftype=ROAD_TYPES)
             if match:
-                network.add_road(**match)
+                rates[match['orig'], match['dest']] = match['rate']
                 continue
 
             for rate_rx in RATES_RX:
                 match = rxmatch(rate_rx, line, ftype=float)
                 if match:
-                    params.update(**match)
+                    rates.update(**match)
                     break
             if match:
+                continue
+
+            match = rxmatch(STOP_TIME_RX, line)
+            if match:
+                params.update(**match)
                 continue
 
             if rxmatch(IGNORE_WARN_RX, line):
@@ -45,4 +51,4 @@ def parse_file(input_str):
                 'Invalid input on line {0} of test file:\n{1!r}'.format(line_no, line)
             )
 
-    return network, params
+    return network, rates, params
