@@ -70,21 +70,19 @@ class Bus(object):
         )
 
     def __str__(self):
-        return '{0}'.format(self.uid)
+        return '{0}'.format(self.bus_id)
 
 
 class Route(object):
 
-    def __init__(self, route_id, stops, bus_count, bus_capacity):
+    def __init__(self, route_id, stops, bus_count, cap):
         self.route_id = route_id
-        self.buses = []
         self.stops = stops
 
         # Create all the buses
-        for bus_id, stop in izip(range(bus_count), cycle(stops)):
-            bus = Bus(self, bus_id, bus_capacity, stop, None)
+        for bus_id, stop in izip(xrange(bus_count), cycle(stops)):
+            bus = Bus(self, bus_id, cap, stop)
             stop.bus_queue.append(bus)
-            self.buses.append(bus)
 
     def next_stop(self, stop_id):
         """
