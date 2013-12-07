@@ -14,8 +14,8 @@ RATES_RX = (
     r'^disembarks (?P<disembarks>{0})$'.format(FLOAT_RX),
     r'^departs (?P<departs>{0})$'.format(FLOAT_RX),
     r'^new passengers (?P<new_passengers>{0})$'.format(FLOAT_RX),
-    r'^stop time (?P<stop_time>{0})$'.format(FLOAT_RX),
 )
+STOP_TIME_RX = r'^stop time (?P<stop_time>{0})$'.format(FLOAT_RX)
 IGNORE_WARN_RX = r'^ignore warnings$'
 OPTIMIZE_RX = r'^optimise parameters$'
 
@@ -38,6 +38,7 @@ def parse_file(filename):
     """
     network = Network()
     params = {}
+    rates = {}
     with open(filename, 'r') as f:
         for line_no, line in enumerate(f, start=1):
             line = line.rstrip('\n')  # get rid of newline
@@ -49,15 +50,20 @@ def parse_file(filename):
 
             match = rxmatch(ROAD_RX, line, ftype=ROAD_TYPES)
             if match:
-                network.add_road(**match)
+                rates[match['orig'], match['dest']] = match['rate']
                 continue
 
             for rate_rx in RATES_RX:
                 match = rxmatch(rate_rx, line, ftype=float)
                 if match:
-                    params.update(**match)
+                    rates.update(**match)
                     break
             if match:
+                continue
+
+            match = rxmatch(STOP_TIME_RX, line)
+            if match:
+                params['stop_time'] = float(match['stop_time'])
                 continue
 
             if rxmatch(IGNORE_WARN_RX, line):
@@ -75,7 +81,7 @@ def parse_file(filename):
                 'Invalid input on line {0} of file {1}:\n{2!r}'.format(line_no, filename, line)
             )
 
-    return network, params
+    return network, rates, params
 
 
 def rxmatch(pattern, string, ftype=None):

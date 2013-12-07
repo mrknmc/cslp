@@ -1,13 +1,8 @@
-from collections import defaultdict
-from itertools import ifilterfalse, chain, imap
-from operator import itemgetter
-from random import random, choice
+from random import choice, random
 from math import log10
-
-from util import log, weighted_choice
-from models import Passenger
+from events import log, EventMap
 from parser import parse_file
-from events import event_dispatch
+from collections import Counter
 
 
 class World(object):
@@ -19,121 +14,20 @@ class World(object):
         self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
-        network, params = parse_file(filename)
+        network, rates, params = parse_file(filename)
         self.network = network
-        for key, val in params.iteritems():  # this sets all the rates and flags
+        self.event_map = EventMap()
+        self.rates = rates
+        self.total_rate = rates['new_passengers']  # new passengers is always available
+
+        # add buses to departs and increment total_rate
+        for stop in network.stops.itervalues():
+            self.event_map.departs.extend(stop.bus_queue)
+            self.total_rate += len(stop.bus_queue) * rates['departs']
+
+        # Set all flags
+        for key, val in params.iteritems():
             setattr(self, key, val)
-
-    def possible_events(self, as_list=False):
-        """
-        Get all buses that are ready for departure.
-        Get all buses that are ready for arrival.
-
-        Get all passengers that are ready to board a bus.
-        Get all passengers that are ready to disembark a bus.
-
-        Get a character creation.
-        """
-        buses = list(self.network.get_buses())
-        stops = list(self.network.get_stops())
-        events = {
-            'disembarks': self.disembarking_passengers(buses=buses),
-            'boards': self.boarding_passengers(stops=stops),
-            'departs': self.departure_ready_buses(buses=buses),
-            'arrivals': self.arrival_ready_buses(buses=buses),
-            'new_passengers': [(None, )],
-        }
-        if list:
-            for key, val in events.iteritems():
-                events[key] = list(val)
-        return events
-
-    def calculate_total_rate(self, events=None):
-        """
-        Calculates the total rate of all the events.
-        """
-        if not events:
-            events = self.possible_events()
-
-        total_rate = 0
-        for key, tups in events.iteritems():
-            try:
-                total_rate += getattr(self, key) * sum(1 for tup in tups)
-            except AttributeError:
-                if key != 'arrivals':
-                    raise
-                total_rate += reduce(lambda t, b: t + b[0].road_rate, tups, 0)
-
-        return total_rate
-
-    def sample_delay(self, total_rate=None):
-        """
-        Return a sample delay based on total rate.
-        """
-        if not total_rate:
-            total_rate = self.calculate_total_rate()
-
-        mean = 1 / total_rate  # let's hope total_rate won't be 0
-        return -mean * log10(random())
-
-    def choose_event(self, events=None, total_rate=None):
-        """
-        Probabilistically choose one of the events.
-        """
-        if not events:
-            events = self.possible_events()
-
-        if not total_rate:
-            total_rate = self.calculate_total_rate(events=events)
-
-        rand = random() * total_rate
-
-        for key, tups in events.iteritems():
-            for tup in tups:
-                try:
-                    rand -= getattr(self, key)
-                except AttributeError:
-                    rand -= tup[0].road_rate
-                if rand < 0:
-                    return event_dispatch(self.time, key, *tup)
-
-    def arrival_ready_buses(self, buses=None):
-        """
-        Return buses that are ready for arrival.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        return ((bus, ) for bus in buses if bus.in_motion)
-
-    def departure_ready_buses(self, buses=None):
-        """
-        Return buses that are ready for departure.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        return ((bus, ) for bus in buses if bus.ready_for_departure())
-
-    def disembarking_passengers(self, buses=None):
-        """
-        Returns set of passengers that are at their destination station.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        pax_gens = (bus.disembarking_passengers() for bus in buses if not bus.in_motion)
-        return chain(*pax_gens)
-
-    def boarding_passengers(self, stops=None):
-        """
-        Return passengers that are at their origin station and want to board the bus.
-        """
-        if not stops:
-            stops = self.network.get_stops()
-
-        pax_gens = (stop.boarding_passengers() for stop in stops)
-        return chain(*pax_gens)
 
     def dequeue_bus(self, bus):
         """
@@ -141,11 +35,11 @@ class World(object):
         """
         cur_stop = bus.stop
         cur_stop.bus_queue.remove(bus)
-        next_stop = bus.route.get_next_stop(cur_stop.stop_id)  # set next stop
-        bus.road_rate = self.network.roads[cur_stop.stop_id, next_stop.stop_id]
+        next_stop = bus.route.next_stop(cur_stop.stop_id)  # set next stop
+        bus.road_rate = self.rates[cur_stop.stop_id, next_stop.stop_id]
         bus.stop = next_stop
 
-    def generate_passenger(self):
+    def gen_pax(self):
         """
         Generates a passenger on the network.
         """
@@ -160,28 +54,159 @@ class World(object):
             except ValueError:
                 continue
 
-        dest = choice(dests).stop_id
-        orig = orig.stop_id
-        return orig, Passenger(orig, dest)
+        dest = choice(dests)
+        return dict(orig=orig, dest=dest)
 
-    def generate_passenger(self):
+    def update(self, event_type, **kwargs):
+        rates = self.rates
+        total_rate = self.total_rate
+        e_map = self.event_map
+
+        if event_type == 'boards':
+            bus = kwargs['bus']
+            dest_id = kwargs['dest']
+            stop = bus.stop
+
+            # Update the world
+            stop.pax_dests[dest_id] -= 1  # no longer on the stop
+            bus.pax_dests[dest_id] += 1  # now on the bus
+
+            if bus.full():
+                # No one can board this bus anymore - it's full
+                bus_boards = sum(e_map.boards[bus].itervalues())
+                total_rate -= bus_boards * rates['boards']
+                del(e_map.boards[bus])
+
+            for bus in stop.bus_queue:
+                if bus.satisfies(dest_id):
+                    # This person can not board any buses anymore
+                    total_rate -= rates['boards']
+                    e_map.boards[bus][dest_id] -= 1
+                    # Bus may be ready for departure
+                    if bus.departure_ready:
+                        total_rate += rates['departs']
+                        e_map.departs.append(bus)
+
+        elif event_type == 'disembarks':
+            bus = kwargs['bus']
+            stop_id = bus.stop.stop_id
+
+            # Update the world
+            bus.pax_dests[stop_id] -= 1  # no longer on the bus
+
+            # Event not available anymore
+            total_rate -= rates['disembarks']
+            if bus.disembarks == 0:
+                e_map.disembarks.remove(bus)
+
+            # If the bus was full then people can now board it
+            if bus.full(offset=1):
+                bus_boards = Counter(dict(bus.boards))
+                total_rate += sum(bus_boards.itervalues()) * rates['boards']
+                e_map.boards[bus] = bus_boards
+
+            # If no one else wants to disembark or embark then it is departure ready
+            if bus.departure_ready:
+                total_rate += rates['departs']
+                e_map.departs.append(bus)
+
+        elif event_type == 'departs':
+            bus = kwargs['bus']
+
+            # Update the world
+            self.dequeue_bus(bus)
+
+            # Event is not available anymore
+            total_rate -= rates['departs']
+            e_map.departs.remove(bus)
+
+            # How it affects other events
+            total_rate += bus.road_rate
+            e_map.arrivals.append(bus)
+
+        elif event_type == 'arrivals':
+            bus = kwargs['bus']
+            stop = bus.stop
+            road_rate = bus.road_rate
+
+            # Update the world
+            stop.bus_queue.append(bus)  # on the stop now
+            bus.road_rate = None  # no longer on the road
+
+            # Event not available anymore
+            e_map.arrivals.remove(bus)
+            total_rate -= road_rate
+
+            # People on the stop can now board the bus
+            bus_boards = Counter(dict(bus.boards))
+            if bus_boards:
+                # Some people want to board the bus
+                total_rate += sum(bus_boards.itervalues()) * rates['boards']
+                e_map.boards[bus] = bus_boards
+            elif bus.departure_ready:
+                # No one wants to board the bus - it can depart
+                total_rate += rates['departs']
+                e_map.departs.append(bus)
+
+            # People on the bus can now disembark it
+            bus_disembarks = bus.disembarks
+            # print bus_disembarks
+            total_rate += bus_disembarks * rates['disembarks']
+            if bus_disembarks and bus not in e_map.disembarks:
+                e_map.disembarks.append(bus)
+        else:
+            # Update the world
+            orig, dest = kwargs['orig'], kwargs['dest']
+            orig.pax_dests[dest.stop_id] += 1
+
+            # The person can board some buses on the origin stop
+            dest_id = dest.stop_id
+            for bus in orig.bus_queue:
+                if bus.satisfies(dest_id):
+                    # Bus can not depart now if it satisfies the destination
+                    if bus in e_map.departs:
+                        total_rate -= rates['departs']
+                        e_map.departs.remove(bus)
+                    total_rate += rates['boards']
+                    e_map.boards[bus][dest_id] += 1
+
+        self.total_rate = total_rate
+        self.event_map = e_map
+
+    def choose_event(self):
         """
-        Generates a passenger on the network.
+        Chooses an event based on the last event.
         """
-        orig = choice(self.network.stops)
+        rand = random() * self.total_rate
 
-        dests = []
-        for route in self.network.routes.itervalues():
-            try:
-                idx = route.stops.index(orig)
-                dests.extend(routes.stops[:idx])
-                dests.extend(routes.stops[idx+1:])
-            except ValueError:
-                continue
+        for bus, dest, count in self.event_map.gen_boards():
+            rand -= count * self.rates['boards']
+            if rand < 0:
+                return 'boards', dict(dest=dest, bus=bus)
 
-        dest = choice(dests).stop_id
-        orig = orig.stop_id
-        return orig, Passenger(orig, dest)
+        for bus in self.event_map.disembarks:
+            rand -= bus.disembarks * self.rates['disembarks']
+            if rand < 0:
+                return 'disembarks', dict(bus=bus)
+
+        for bus in self.event_map.departs:
+            rand -= self.rates['departs']
+            if rand < 0:
+                return 'departs', dict(dest=bus.stop, bus=bus)
+
+        for bus in self.event_map.arrivals:
+            rand -= bus.road_rate
+            if rand < 0:
+                return 'arrivals', dict(bus=bus)
+
+        return 'new_passengers', self.gen_pax()
+
+    def sample_delay(self):
+        """
+        Return a sample delay based on the total rate.
+        """
+        mean = 1 / self.total_rate
+        return -mean * log10(random())
 
     def validate(self):
         """
@@ -210,10 +235,8 @@ class World(object):
         Run the simulation until world explodes.
         """
         while self.time <= self.stop_time:
-            events = self.possible_events(as_list=True)
-            total_rate = self.calculate_total_rate(events=events)
-            delay = self.sample_delay(total_rate=total_rate)
-            event = self.choose_event(events, total_rate=total_rate)
-            event.update_world(self)
-            log(event)
+            delay = self.sample_delay()
+            event_type, kwargs = self.choose_event()
+            self.update(event_type, **kwargs)
+            log(event_type, time=self.time, **kwargs)
             self.time += delay
