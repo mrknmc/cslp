@@ -30,3 +30,19 @@ class EventMap(object):
             for dest, count in dct.iteritems():
                 yield bus, dest, count
 
+    def __repr__(self):
+        arr = []
+        arr.append('')
+        arr.append('boards')
+        arr.append(str(self.boards))
+        arr.append('')
+        arr.append('disembarks')
+        arr.append(str(self.disembarks))
+        arr.append('')
+        arr.append('departs')
+        arr.append(str(self.departs))
+        arr.append('')
+        arr.append('arrivals')
+        arr.append(str(self.arrivals))
+        arr.append('---------------------------------------------------------')
+        return '\n'.join(arr)
