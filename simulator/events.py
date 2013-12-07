@@ -31,7 +31,7 @@ class EventMap(object):
     """
 
     def __init__(self):
-        self.boards = defaultdict(lambda: Counter())
+        self.boards = defaultdict(lambda: PosCounter())
         self.disembarks = []
         self.departs = []
         self.arrivals = []
@@ -57,3 +57,12 @@ class EventMap(object):
         arr.append(str(self.arrivals))
         arr.append('---------------------------------------------------------')
         return '\n'.join(arr)
+
+
+class PosCounter(Counter):
+
+    def __setitem__(self, key, val):
+        if val <= 0:
+            self.__delitem__(key)
+        else:
+            super(Counter, self).__setitem__(key, val)
