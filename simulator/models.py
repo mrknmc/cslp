@@ -12,7 +12,7 @@ class Bus(object):
         Also initialize the number of passengers to 0.
         """
         self.route = route
-        self.bus_id = '{0}.{1}'.format(route.route_id, bus_id)
+        self.bus_id = '{}.{}'.format(route.route_id, bus_id)
         self.capacity = capacity
         self.pax_dests = Counter()
         self.stop = stop
@@ -32,33 +32,36 @@ class Bus(object):
         """
         return (
             not self.in_motion and
-            (self.full or list(self.boards()) == []) and
-            list(self.disembarks()) == []
+            (self.full() or list(self.boards) == []) and
+            self.disembarks == 0
         )
+
+    @property
+    def disembarks(self):
+        """
+        Return passengers that have arrived at their destination and want to disembark.
+        """
+        return self.pax_dests[self.stop.stop_id]
+
+    @property
+    def boards(self):
+        """
+        Return passengers that would like to board this bus.
+        """
+        # TODO: maybe get all stops from route and then dict-access them
+        return ifilter(lambda i: self.satisfies(i[0]) and i[1] != 0, self.stop.pax_dests.iteritems())
 
     def full(self, offset=0):
         """
         Returns true if the bus is full.
         """
-        return sum(self.pax_dests.itervalues()) == self.capacity + offset
+        return sum(self.pax_dests.itervalues()) + offset == self.capacity
 
     def satisfies(self, dest):
         """
         Returns True if the bus can satisfy passenger's destination.
         """
         return dest in (stop.stop_id for stop in self.route.stops)
-
-    def disembarks(self):
-        """
-        Return passengers that have arrived at their destination and want to disembark.
-        """
-        return ifilter(lambda i: i[0] == self.stop.stop_id, self.pax_dests.iteritems())
-
-    def boards(self):
-        """
-        Return passengers that would like to board this bus.
-        """
-        return ifilter(lambda i: self.satisfies(i[0]), self.stop.pax_dests.iteritems())
 
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
@@ -70,7 +73,7 @@ class Bus(object):
         )
 
     def __str__(self):
-        return '{0}'.format(self.bus_id)
+        return self.bus_id
 
 
 class Route(object):
@@ -92,7 +95,8 @@ class Route(object):
         return self.stops[next_idx % len(self.stops)]
 
     def __repr__(self):
-        return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
+        stop_ids = ', '.join([str(stop.stop_id) for stop in self.stops])
+        return 'Route({0} | S: {1})'.format(self.route_id, stop_ids)
 
     def __str__(self):
         return '{0}'.format(self.route_id)
@@ -162,7 +166,6 @@ class Network(object):
         """
         """
         return """
-Roads: {roads}
-
 Routes: {routes}
-        """.format(roads=[list(r) for r in self.roads], routes=self.routes.values())
+Stops: {stops}
+        """.format(routes=self.routes.values(), stops=self.stops.values())
