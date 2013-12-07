@@ -62,29 +62,40 @@ class World(object):
         e_map = self.event_map
 
         if event_type == 'boards':
-            bus = kwargs['bus']
+            ebus = kwargs['bus']
             dest_id = kwargs['dest']
-            stop = bus.stop
+            stop = ebus.stop
 
             # Update the world
             stop.pax_dests[dest_id] -= 1  # no longer on the stop
-            bus.pax_dests[dest_id] += 1  # now on the bus
+            ebus.pax_dests[dest_id] += 1  # now on the bus
 
-            if bus.full():
-                # No one can board this bus anymore - it's full
-                bus_boards = sum(e_map.boards[bus].itervalues())
-                total_rate -= bus_boards * rates['boards']
-                del(e_map.boards[bus])
-
+            # The person can not board any other buses anymore
             for bus in stop.bus_queue:
-                if bus.satisfies(dest_id):
-                    # This person can not board any buses anymore
+                if bus == ebus:
+                    continue  # skip the bus of this event
+                if bus.satisfies(dest_id) and not bus.full():
                     total_rate -= rates['boards']
                     e_map.boards[bus][dest_id] -= 1
                     # Bus may be ready for departure
                     if bus.departure_ready:
                         total_rate += rates['departs']
                         e_map.departs.append(bus)
+
+            # The person can not board this bus
+            total_rate -= rates['boards']
+            e_map.boards[ebus][dest_id] -= 1
+
+            # This bus could be ready for departure
+            if ebus.departure_ready:
+                total_rate += rates['departs']
+                e_map.departs.append(ebus)
+
+            # No one can board this bus anymore - it's full
+            if ebus.full():
+                bus_boards = sum(e_map.boards[ebus].itervalues())
+                total_rate -= bus_boards * rates['boards']
+                del(e_map.boards[ebus])
 
         elif event_type == 'disembarks':
             bus = kwargs['bus']
@@ -161,7 +172,7 @@ class World(object):
             # The person can board some buses on the origin stop
             dest_id = dest.stop_id
             for bus in orig.bus_queue:
-                if bus.satisfies(dest_id):
+                if bus.satisfies(dest_id) and not bus.full():
                     # Bus can not depart now if it satisfies the destination
                     if bus in e_map.departs:
                         total_rate -= rates['departs']
