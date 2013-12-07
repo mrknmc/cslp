@@ -14,11 +14,18 @@ class World(object):
         if not filename:
             return  # mainly for testing - init the world add params later
         network, rates, params = parse_file(filename)
-        self.event_map = EventMap(network=network)
+        self.network = network
+        self.event_map = EventMap()
         self.rates = rates
         self.total_rate = rates['new_passengers']  # new passengers is always available
-        self.network = network
-        for key, val in params.iteritems():  # this sets all the rates and flags
+
+        # add buses to departs and increment total_rate
+        for stop in network.stops.itervalues():
+            self.event_map.departs.extend(stop.bus_queue)
+            self.total_rate += len(stop.bus_queue) * rates['departs']
+
+        # Set all flags
+        for key, val in params.iteritems():
             setattr(self, key, val)
 
     def dequeue_bus(self, bus):
