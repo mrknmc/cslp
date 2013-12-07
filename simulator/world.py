@@ -2,6 +2,7 @@ from random import choice, random
 from math import log10
 from events import log, EventMap
 from parser import parse_file
+from collections import Counter
 
 
 class World(object):
@@ -57,85 +58,120 @@ class World(object):
         return dict(orig=orig, dest=dest)
 
     def update(self, event_type, **kwargs):
+        rates = self.rates
+        total_rate = self.total_rate
+        e_map = self.event_map
+
         if event_type == 'boards':
             bus = kwargs['bus']
-            dest_id = kwargs['dest'].stop_id
+            dest_id = kwargs['dest']
             stop = bus.stop
 
-            stop.pax_dests[dest_id] -= 1
-            bus.pax_dests[dest_id] += 1
-
-            for bus in stop.bus_queue:
-                # Decrement boards destination count of all buses that satisfy dest
-                if bus.satisfies(dest_id):
-                    self.total_rate -= self.rates['boards']
-                    self.event_map.boards[bus][dest_id] -= 1
+            # Update the world
+            stop.pax_dests[dest_id] -= 1  # no longer on the stop
+            bus.pax_dests[dest_id] += 1  # now on the bus
 
             if bus.full():
-                # Increment the total rate by rate of one departure
-                self.total_rate += self.rates['departs']
-                self.event_map.departs.append(bus)
+                # No one can board this bus anymore - it's full
+                bus_boards = sum(e_map.boards[bus].itervalues())
+                total_rate -= bus_boards * rates['boards']
+                del(e_map.boards[bus])
 
-                # Remove boarders of this bus - it's full
-                bus_boards = self.event_map.boards[bus]
-                self.total_rate -= sum(bus_boards.itervalues()) * self.rates['boards']
-                del(self.event_map.boards[bus])
+            for bus in stop.bus_queue:
+                if bus.satisfies(dest_id):
+                    # This person can not board any buses anymore
+                    total_rate -= rates['boards']
+                    e_map.boards[bus][dest_id] -= 1
+                    # Bus may be ready for departure
+                    if bus.departure_ready:
+                        total_rate += rates['departs']
+                        e_map.departs.append(bus)
 
         elif event_type == 'disembarks':
             bus = kwargs['bus']
             stop_id = bus.stop.stop_id
 
-            bus.pax_dests[stop_id] -= 1
+            # Update the world
+            bus.pax_dests[stop_id] -= 1  # no longer on the bus
 
-            # Decrease the disembarks by one
-            self.total_rate -= self.rates['disembarks']
-            self.event_map.disembarks[bus][stop_id] -= 1
+            # Event not available anymore
+            total_rate -= rates['disembarks']
+            if bus.disembarks == 0:
+                e_map.disembarks.remove(bus)
 
-            # TODO: this is relying on the fact that world update happens AFTER event update
+            # If the bus was full then people can now board it
             if bus.full(offset=1):
-                # Add boards if bus was full
-                bus_boards = dict(bus.boards())
-                self.total_rate -= sum(bus_boards.itervalues()) * self.rates['boards']
-                self.event_map.boards[bus] = bus_boards
+                bus_boards = Counter(dict(bus.boards))
+                total_rate += sum(bus_boards.itervalues()) * rates['boards']
+                e_map.boards[bus] = bus_boards
+
+            # If no one else wants to disembark or embark then it is departure ready
+            if bus.departure_ready:
+                total_rate += rates['departs']
+                e_map.departs.append(bus)
 
         elif event_type == 'departs':
             bus = kwargs['bus']
 
+            # Update the world
             self.dequeue_bus(bus)
 
-            # The bus is no longer ready for departure
-            self.total_rate -= self.rates['departs']
-            self.event_map.departs.remove(bus)
+            # Event is not available anymore
+            total_rate -= rates['departs']
+            e_map.departs.remove(bus)
 
-            # The bus is now ready for arrival
-            self.total_rate += bus.road_rate
-            self.event_map.arrivals.append(bus)
+            # How it affects other events
+            total_rate += bus.road_rate
+            e_map.arrivals.append(bus)
 
         elif event_type == 'arrivals':
             bus = kwargs['bus']
+            stop = bus.stop
+            road_rate = bus.road_rate
 
-            bus.stop.bus_queue.append(bus)
-            self.total_rate -= bus.road_rate
-            bus.road_rate = None
+            # Update the world
+            stop.bus_queue.append(bus)  # on the stop now
+            bus.road_rate = None  # no longer on the road
 
-            # Update 'boarders'
-            bus_boards = dict(bus.boards())
-            self.total_rate += sum(bus_boards.itervalues()) * self.rates['boards']
-            self.event_map.boards[bus] = bus_boards
-            # Update 'disembarkers'
-            bus_disembarks = dict(bus.disembarks())
-            self.total_rate += sum(bus_disembarks.itervalues()) * self.rates['disembarks']
-            self.event_map.disembarks[bus] = bus_disembarks
+            # Event not available anymore
+            e_map.arrivals.remove(bus)
+            total_rate -= road_rate
+
+            # People on the stop can now board the bus
+            bus_boards = Counter(dict(bus.boards))
+            if bus_boards:
+                # Some people want to board the bus
+                total_rate += sum(bus_boards.itervalues()) * rates['boards']
+                e_map.boards[bus] = bus_boards
+            elif bus.departure_ready:
+                # No one wants to board the bus - it can depart
+                total_rate += rates['departs']
+                e_map.departs.append(bus)
+
+            # People on the bus can now disembark it
+            bus_disembarks = bus.disembarks
+            # print bus_disembarks
+            total_rate += bus_disembarks * rates['disembarks']
+            if bus_disembarks and bus not in e_map.disembarks:
+                e_map.disembarks.append(bus)
         else:
-            # Passenger creation
+            # Update the world
             orig, dest = kwargs['orig'], kwargs['dest']
             orig.pax_dests[dest.stop_id] += 1
-            # Update 'boarders'
+
+            # The person can board some buses on the origin stop
             dest_id = dest.stop_id
             for bus in orig.bus_queue:
                 if bus.satisfies(dest_id):
-                    self.total_rate += self.rates['boards']
-                    self.event_map.boards[bus][dest_id] += 1
+                    # Bus can not depart now if it satisfies the destination
+                    if bus in e_map.departs:
+                        total_rate -= rates['departs']
+                        e_map.departs.remove(bus)
+                    total_rate += rates['boards']
+                    e_map.boards[bus][dest_id] += 1
+
+        self.total_rate = total_rate
+        self.event_map = e_map
 
     def choose_event(self):
         """
@@ -146,17 +182,17 @@ class World(object):
         for bus, dest, count in self.event_map.gen_boards():
             rand -= count * self.rates['boards']
             if rand < 0:
-                return 'boards', dict(stop=dest, bus=bus)
+                return 'boards', dict(dest=dest, bus=bus)
 
-        for bus, dest, count in self.event_map.gen_disembarks():
-            rand -= count * self.rates['disembarks']
+        for bus in self.event_map.disembarks:
+            rand -= bus.disembarks * self.rates['disembarks']
             if rand < 0:
-                return 'disembarks', dict(stop=dest, bus=bus)
+                return 'disembarks', dict(bus=bus)
 
         for bus in self.event_map.departs:
             rand -= self.rates['departs']
             if rand < 0:
-                return 'departs', dict(bus=bus)
+                return 'departs', dict(dest=bus.stop, bus=bus)
 
         for bus in self.event_map.arrivals:
             rand -= bus.road_rate
@@ -164,7 +200,6 @@ class World(object):
                 return 'arrivals', dict(bus=bus)
 
         return 'new_passengers', self.gen_pax()
-
 
     def sample_delay(self):
         """
@@ -202,7 +237,6 @@ class World(object):
         while self.time <= self.stop_time:
             delay = self.sample_delay()
             event_type, kwargs = self.choose_event()
-            log(event_type, time=self.time, **kwargs)
-            print event_type
             self.update(event_type, **kwargs)
+            log(event_type, time=self.time, **kwargs)
             self.time += delay
