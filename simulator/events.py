@@ -1,6 +1,5 @@
 from collections import defaultdict, Counter
 from functools import partial
-from termcolor import colored
 
 
 def log(event_type, **kwargs):
@@ -12,6 +11,18 @@ def log(event_type, **kwargs):
         'new_passengers': 'A new passenger enters at stop {orig} with destination {dest} at time {time}'
     }
     print(msgs[event_type].format(**kwargs))
+
+
+def color_log(event_type, **kwargs):
+    from termcolor import colored
+    msgs = {
+        'arrivals': ('Bus {bus} arrives at stop {bus.stop} at time {time}', 'blue'),
+        'departs': ('Bus {bus} leaves stop {dest} at time {time}', 'red'),
+        'boards': ('Passenger boards bus {bus} at stop {bus.stop} with destination {dest} at time {time}', 'yellow'),
+        'disembarks': ('Passenger disembarks bus {bus} at stop {bus.stop} at time {time}', 'cyan'),
+        'new_passengers': ('A new passenger enters at stop {orig} with destination {dest} at time {time}', 'magenta')
+    }
+    print colored('o', msgs[event_type][1]), msgs[event_type][0].format(**kwargs)
 
 
 class EventMap(object):
