@@ -1,8 +1,7 @@
 from random import choice, random
 from math import log10
-from events import log, EventMap
+from events import color_log as log, EventMap, PosCounter
 from parser import parse_file
-from collections import Counter
 
 
 class World(object):
@@ -101,7 +100,7 @@ class World(object):
 
             # If the bus was full then people can now board it
             if bus.full(offset=1):
-                bus_boards = Counter(dict(bus.boards))
+                bus_boards = PosCounter(dict(bus.boards))
                 total_rate += sum(bus_boards.itervalues()) * rates['boards']
                 e_map.boards[bus] = bus_boards
 
@@ -137,9 +136,9 @@ class World(object):
             e_map.arrivals.remove(bus)
             total_rate -= road_rate
 
-            # People on the stop can now board the bus
-            bus_boards = Counter(dict(bus.boards))
-            if bus_boards:
+            # People on the stop can now board the bus if it isnt full
+            bus_boards = PosCounter(dict(bus.boards))
+            if bus_boards and not bus.full():
                 # Some people want to board the bus
                 total_rate += sum(bus_boards.itervalues()) * rates['boards']
                 e_map.boards[bus] = bus_boards

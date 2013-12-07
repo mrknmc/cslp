@@ -1,5 +1,5 @@
 from itertools import cycle, izip, ifilter
-from collections import Counter
+from events import PosCounter
 
 
 class Bus(object):
@@ -14,7 +14,7 @@ class Bus(object):
         self.route = route
         self.bus_id = '{}.{}'.format(route.route_id, bus_id)
         self.capacity = capacity
-        self.pax_dests = Counter()
+        self.pax_dests = PosCounter()
         self.stop = stop
         self.road_rate = None
 
@@ -107,7 +107,7 @@ class Stop(object):
     def __init__(self, stop_id):
         self.stop_id = stop_id
         self.bus_queue = []
-        self.pax_dests = Counter()
+        self.pax_dests = PosCounter()
 
     def __repr__(self):
         return 'Stop({0} | B: {1} | P: {2})'.format(
