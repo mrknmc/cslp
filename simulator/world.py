@@ -13,10 +13,11 @@ class World(object):
         self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
-        network, rates, params = parse_file(filename)
+        network, rates, params, exps = parse_file(filename)
         self.network = network
         self.event_map = EventMap()
         self.rates = rates
+        self.experiments = exps
         self.total_rate = rates['new_passengers']  # new passengers is always available
 
         # add buses to departs and increment total_rate
@@ -233,6 +234,10 @@ class World(object):
         ]):
             raise Exception("The simulation is not valid.")
         self.network.validate()
+
+    def next_experiment(self):
+        """"""
+        pass
 
     def start(self):
         """

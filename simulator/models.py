@@ -137,7 +137,7 @@ class Network(object):
             # <stop_id> : <stop>
         }
 
-    def add_route(self, route_id, stop_ids, bus_count, cap):
+    def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
         """
         Create a new route and add it to the network. There is no need
         to create the stops since for a valid network there will always
