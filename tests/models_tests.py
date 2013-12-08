@@ -1,6 +1,7 @@
 import unittest
 from unittest import skip
 
+from simulator.events import PosCounter
 from simulator.models import *
 
 
@@ -30,7 +31,7 @@ class TestBus(unittest.TestCase):
         stop = self.stops[0]
         bus = Bus(self.route, 0, stop)
 
-        bus.pax_dests = {5: 20}
+        bus.pax_dests = PosCounter({5: 20})
         self.assertTrue(bus.departure_ready)
 
     def test_disembarks(self):
@@ -40,12 +41,12 @@ class TestBus(unittest.TestCase):
         bus1 = Bus(self.route, 4, self.stops[0])
         bus2 = Bus(self.route, 3, self.stops[1])
 
-        pax_dests = {
+        pax_dests = PosCounter({
             3: 2,
             7: 1,
             9: 1,
             1: 1
-        }
+        })
 
         bus1.pax_dests = pax_dests
         bus2.pax_dests = pax_dests
