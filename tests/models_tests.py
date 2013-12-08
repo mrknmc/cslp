@@ -21,14 +21,14 @@ class TestBus(unittest.TestCase):
         Test that the bus id is set correctly.
         """
         stop = self.stops[0]
-        bus = Bus(self.route, 0, 20, stop)
+        bus = Bus(self.route, 0, stop)
         self.assertEqual(bus.bus_id, '4.0')
 
     def test_departure_ready(self):
         """
         """
         stop = self.stops[0]
-        bus = Bus(self.route, 0, 20, stop)
+        bus = Bus(self.route, 0, stop)
 
         bus.pax_dests = {5: 20}
         self.assertTrue(bus.departure_ready)
@@ -37,8 +37,8 @@ class TestBus(unittest.TestCase):
         """
         Test that there are passengers who want to disembark.
         """
-        bus1 = Bus(self.route, 4, 20, self.stops[0])
-        bus2 = Bus(self.route, 3, 20, self.stops[1])
+        bus1 = Bus(self.route, 4, self.stops[0])
+        bus2 = Bus(self.route, 3, self.stops[1])
 
         pax_dests = {
             3: 2,
@@ -61,7 +61,7 @@ class TestBus(unittest.TestCase):
         Test that the capacity is full.
         """
         stop = self.stops[0]
-        bus = Bus(self.route, 4, 20, stop)
+        bus = Bus(self.route, 4, stop)
 
         bus.pax_dests = {5: 19}
         self.assertFalse(bus.full())

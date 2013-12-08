@@ -4,7 +4,7 @@ from events import PosCounter
 
 class Bus(object):
 
-    def __init__(self, route, bus_id, capacity, stop):
+    def __init__(self, route, bus_id, stop):
         """
         Initialize a new bus. Set its current stop to the
         n-thstop of the route where n is the bus id.
@@ -13,7 +13,6 @@ class Bus(object):
         """
         self.route = route
         self.bus_id = '{}.{}'.format(route.route_id, bus_id)
-        self.capacity = capacity
         self.pax_dests = PosCounter()
         self.stop = stop
         self.road_rate = None
@@ -55,7 +54,7 @@ class Bus(object):
         """
         Returns true if the bus is full.
         """
-        return sum(self.pax_dests.itervalues()) + offset == self.capacity
+        return sum(self.pax_dests.itervalues()) + offset == self.route.capacity
 
     def satisfies(self, dest):
         """
@@ -66,7 +65,7 @@ class Bus(object):
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
             self.bus_id,
-            self.capacity,
+            self.route.capacity,
             self.stop.stop_id,
             self.road_rate if self.road_rate else '-',
             sum(self.pax_dests.itervalues())
@@ -78,13 +77,14 @@ class Bus(object):
 
 class Route(object):
 
-    def __init__(self, route_id, stops, bus_count, cap):
+    def __init__(self, route_id, stops, bus_count, capacity):
         self.route_id = route_id
         self.stops = stops
+        self.capacity = capacity
 
         # Create all the buses
         for bus_id, stop in izip(xrange(bus_count), cycle(stops)):
-            bus = Bus(self, bus_id, cap, stop)
+            bus = Bus(self, bus_id, stop)
             stop.bus_queue.append(bus)
 
     def next_stop(self, stop_id):
