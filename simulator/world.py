@@ -31,6 +31,7 @@ class World(object):
         # Clear out the bus stops
         for stop in self.network.stops.itervalues():
             stop.bus_queue = []  # no buses on stops
+            stop.wait_time = 0.0
             stop.pax_dests = PosCounter()  # no passengers on stops
 
         # Add all buses to stops
@@ -42,6 +43,7 @@ class World(object):
         # Clear out the analysis dicts
         self.missed_pax = {'stops': Counter(), 'routes': Counter()}
         self.avg_pax = {'buses': defaultdict(lambda: (0, 0)), 'routes': defaultdict(lambda: (0, 0))}
+        self.avg_busq = defaultdict(lambda: (0, 0))
 
         if bus_counts:
             # Update experimental bus counts
@@ -93,6 +95,13 @@ class World(object):
         count, avg = self.avg_pax['routes'][route_id]
         new_avg = (count * avg + bus_pax_sum) / (count + 1.0)
         self.avg_pax['routes'][route_id] = count + 1, new_avg
+
+    def record_bus_wait(self, stop):
+        stop_id = stop.stop_id
+
+        qing_count = len(stop.bus_queue[1:])
+        count, summa = self.avg_busq[stop_id]
+        self.avg_busq[stop_id] = count + 1, summa + qing_count * (self.time - stop.wait_time)
 
     def gen_pax(self):
         """
@@ -178,10 +187,14 @@ class World(object):
 
         elif event_type == 'departs':
             bus = kwargs['bus']
+            stop = bus.stop
 
             # Record passengers who couldn't get on
             self.record_missed_pax(bus)
             self.record_pax_count(bus)
+            self.record_bus_wait(stop)
+
+            stop.wait_time = self.time
 
             # Update the world
             self.dequeue_bus(bus)
@@ -198,6 +211,11 @@ class World(object):
             bus = kwargs['bus']
             stop = bus.stop
             road_rate = bus.road_rate
+
+            # Record stop waiting time
+            self.record_bus_wait(stop)
+
+            stop.wait_time = self.time
 
             # Update the world
             stop.bus_queue.append(bus)  # on the stop now
@@ -313,6 +331,15 @@ class World(object):
             print('average passengers route {0} {1}'.format(route_id, mean))
 
         print('average passengers {}\n'.format(total_avg / total_count))
+
+        total_count = total_sum = 0.0
+        for stop_id, (count, summa) in self.avg_busq.iteritems():
+            print count, summa
+            total_count += count
+            total_sum += summa
+            print('average queueing at stop {0} {1}'.format(stop_id, summa / count))
+
+        print('average queueing at all stops {}\n'.format(total_sum / total_count))
 
     def get_experiments(self, key):
         """
