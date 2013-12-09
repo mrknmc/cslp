@@ -252,15 +252,39 @@ class World(object):
             raise Exception("The simulation is not valid.")
         self.network.validate()
 
-    def next_experiment(self):
-        """"""
-        pass
+    def get_experiments(self, key):
+        """
+        """
+        for comb in product(*self.experiments[key].itervalues()):
+            yield dict(izip(self.experiments[key], comb))
+
+    def experiment(self):
+        """
+        """
+        bus_counts_gen = self.get_experiments('bus_count')
+        for bus_counts in bus_counts_gen:
+            caps_gen = self.get_experiments('cap')
+            for caps in caps_gen:
+                rates_gen = self.get_experiments('rates')
+                for rates in rates_gen:
+                    self.rates.update(rates)
+                    self.initialise(caps=caps, bus_counts=bus_counts)
+                    self.time = 0.0
+                    # print self.network
+                    self.run()
+                    break
+                break
+            break
 
     def start(self):
         """
         Validate and then start the run loop.
         """
-        self.run()
+        if self.experimental_mode:
+            self.experiment()
+        else:
+            self.initialise()
+            self.run()
 
     def run(self):
         """
