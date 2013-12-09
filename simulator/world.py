@@ -1,6 +1,7 @@
 from random import choice, random
 from math import log10
 from models import Bus
+from collections import Counter
 from events import color_log as log, EventMap, PosCounter
 from parser import parse_file
 from itertools import product, izip, cycle
@@ -19,32 +20,44 @@ class World(object):
         self.network = network
         self.rates = rates
         self.experiments = exps
+        # more efficient than PosCounter
 
         # Set all flags
         for key, val in params.iteritems():
             setattr(self, key, val)
 
     def initialise(self, caps=None, bus_counts=None):
-        # Create all the buses
+        # Clear out the bus stops
         for stop in self.network.stops.itervalues():
             stop.bus_queue = []  # no buses on stops
             stop.pax_dests = PosCounter()  # no passengers on stops
 
+        # Add all buses to stops
         for route in self.network.routes.itervalues():
             for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
                 bus = Bus(route, bus_id, stop)
                 stop.bus_queue.append(bus)
 
+        # Clear out the analysis dict
+        self.missed_pax = {
+            'stops': Counter(),
+            'routes': Counter()
+        }
+
         if bus_counts:
+            # Update experimental bus counts
             for route_id, bus_count in bus_counts.iteritems():
                 self.network.routes[route_id].bus_count = bus_count
         if caps:
+            # Update experimental capacities
             for route_id, cap in caps.iteritems():
                 self.network.routes[route_id].capacity = cap
 
-        self.total_rate = self.rates['new_passengers']  # new passengers is always available
+        # Total rate starts as new_passengers which is always possible
+        self.total_rate = self.rates['new_passengers']
+
+        # Buses departing stops are the only possible events at the start
         self.event_map = EventMap()
-        # add buses to departs and increment total_rate
         for stop in self.network.stops.itervalues():
             self.event_map.departs.extend(stop.bus_queue)
             self.total_rate += len(stop.bus_queue) * self.rates['departs']
@@ -58,6 +71,14 @@ class World(object):
         next_stop = bus.route.next_stop(cur_stop.stop_id)  # set next stop
         bus.road_rate = self.rates[cur_stop.stop_id, next_stop.stop_id]
         bus.stop = next_stop
+
+    def record_missed_pax(self, bus):
+        """"""
+        if bus.full():
+            for dest_id, count in bus.stop.pax_dests.iteritems():
+                if bus.satisfies(dest_id):
+                    self.missed_pax['routes'][bus.route.route_id] += count
+                    self.missed_pax['stops'][bus.stop.stop_id] += count
 
     def gen_pax(self):
         """
@@ -143,6 +164,9 @@ class World(object):
 
         elif event_type == 'departs':
             bus = kwargs['bus']
+
+            # Record passengers who couldn't get on
+            self.record_missed_pax(bus)
 
             # Update the world
             self.dequeue_bus(bus)
@@ -252,6 +276,18 @@ class World(object):
             raise Exception("The simulation is not valid.")
         self.network.validate()
 
+    def log_stats(self):
+        """This should maybe be done for all stops and routes."""
+        for route_id, count in self.missed_pax['routes'].iteritems():
+            print('number of missed passengers route {0} {1}'.format(route_id, count))
+
+        total = 0
+        for stop_id, count in self.missed_pax['stops'].iteritems():
+            total += count
+            print('number of missed passengers stop {0} {1}'.format(stop_id, count))
+
+        print('number of missed passengers {}\n'.format(total))
+
     def get_experiments(self, key):
         """
         """
@@ -267,11 +303,12 @@ class World(object):
             for caps in caps_gen:
                 rates_gen = self.get_experiments('rates')
                 for rates in rates_gen:
+                    print bus_counts, caps, rates
                     self.rates.update(rates)
                     self.initialise(caps=caps, bus_counts=bus_counts)
                     self.time = 0.0
-                    # print self.network
                     self.run(silent=True)
+                    self.log_stats()
 
     def start(self):
         """
