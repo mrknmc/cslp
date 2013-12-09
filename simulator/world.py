@@ -271,7 +271,7 @@ class World(object):
                     self.initialise(caps=caps, bus_counts=bus_counts)
                     self.time = 0.0
                     # print self.network
-                    self.run()
+                    self.run(silent=True)
 
     def start(self):
         """
@@ -283,7 +283,7 @@ class World(object):
             self.initialise()
             self.run()
 
-    def run(self):
+    def run(self, silent=False):
         """
         Run the simulation until world explodes.
         """
@@ -291,5 +291,6 @@ class World(object):
             delay = self.sample_delay()
             event_type, kwargs = self.choose_event()
             self.update(event_type, **kwargs)
-            log(event_type, time=self.time, **kwargs)
+            if not silent:
+                log(event_type, time=self.time, **kwargs)
             self.time += delay
