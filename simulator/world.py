@@ -1,7 +1,9 @@
 from random import choice, random
 from math import log10
+from models import Bus
 from events import color_log as log, EventMap, PosCounter
 from parser import parse_file
+from itertools import product, izip, cycle
 
 
 class World(object):
@@ -15,19 +17,37 @@ class World(object):
             return  # mainly for testing - init the world add params later
         network, rates, params, exps = parse_file(filename)
         self.network = network
-        self.event_map = EventMap()
         self.rates = rates
         self.experiments = exps
-        self.total_rate = rates['new_passengers']  # new passengers is always available
-
-        # add buses to departs and increment total_rate
-        for stop in network.stops.itervalues():
-            self.event_map.departs.extend(stop.bus_queue)
-            self.total_rate += len(stop.bus_queue) * rates['departs']
 
         # Set all flags
         for key, val in params.iteritems():
             setattr(self, key, val)
+
+    def initialise(self, caps=None, bus_counts=None):
+        # Create all the buses
+        for stop in self.network.stops.itervalues():
+            stop.bus_queue = []  # no buses on stops
+            stop.pax_dests = PosCounter()  # no passengers on stops
+
+        for route in self.network.routes.itervalues():
+            for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
+                bus = Bus(route, bus_id, stop)
+                stop.bus_queue.append(bus)
+
+        if bus_counts:
+            for route_id, bus_count in bus_counts.iteritems():
+                self.network.routes[route_id].bus_count = bus_count
+        if caps:
+            for route_id, cap in caps.iteritems():
+                self.network.routes[route_id].capacity = cap
+
+        self.total_rate = self.rates['new_passengers']  # new passengers is always available
+        self.event_map = EventMap()
+        # add buses to departs and increment total_rate
+        for stop in self.network.stops.itervalues():
+            self.event_map.departs.extend(stop.bus_queue)
+            self.total_rate += len(stop.bus_queue) * self.rates['departs']
 
     def dequeue_bus(self, bus):
         """
@@ -180,9 +200,6 @@ class World(object):
                         e_map.departs.remove(bus)
                     total_rate += rates['boards']
                     e_map.boards[bus][dest_id] += 1
-
-        self.total_rate = total_rate
-        self.event_map = e_map
 
     def choose_event(self):
         """

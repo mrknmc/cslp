@@ -1,4 +1,4 @@
-from itertools import cycle, izip, ifilter
+from itertools import ifilter
 from events import PosCounter
 
 
@@ -80,12 +80,8 @@ class Route(object):
     def __init__(self, route_id, stops, bus_count, capacity):
         self.route_id = route_id
         self.stops = stops
+        self.bus_count = bus_count
         self.capacity = capacity
-
-        # Create all the buses
-        for bus_id, stop in izip(xrange(bus_count), cycle(stops)):
-            bus = Bus(self, bus_id, stop)
-            stop.bus_queue.append(bus)
 
     def next_stop(self, stop_id):
         """
@@ -129,13 +125,10 @@ class Network(object):
         """
         Represent everything using sets as there is no reason for duplicates.
         """
-        # TODO: Maybe use matrix when dense and list when sparse?
-        self.routes = {
-            # <route_id> : <route>
-        }
-        self.stops = {
-            # <stop_id> : <stop>
-        }
+        # <route_id> : <route>
+        self.routes = {}
+        # <stop_id> : <stop>
+        self.stops = {}
 
     def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
         """
@@ -143,9 +136,15 @@ class Network(object):
         to create the stops since for a valid network there will always
         be roads specifying them.
         """
-        stops = map(Stop, stop_ids)
+        stops = []
+        for stop_id in stop_ids:
+            if stop_id in self.stops:
+                stop = self.stops[stop_id]
+            else:
+                stop = Stop(stop_id)
+                self.stops[stop_id] = stop
+            stops.append(stop)
         route = Route(route_id, stops, bus_count, cap)
-        self.stops = dict(izip(stop_ids, stops))
         self.routes[route_id] = route
 
     def validate(self):
