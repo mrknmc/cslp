@@ -1,7 +1,9 @@
 from random import choice, random
 from math import log10
+from models import Bus
 from events import color_log as log, EventMap, PosCounter
 from parser import parse_file
+from itertools import product, izip, cycle
 
 
 class World(object):
@@ -13,20 +15,39 @@ class World(object):
         self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
-        network, rates, params = parse_file(filename)
+        network, rates, params, exps = parse_file(filename)
         self.network = network
-        self.event_map = EventMap()
         self.rates = rates
-        self.total_rate = rates['new_passengers']  # new passengers is always available
-
-        # add buses to departs and increment total_rate
-        for stop in network.stops.itervalues():
-            self.event_map.departs.extend(stop.bus_queue)
-            self.total_rate += len(stop.bus_queue) * rates['departs']
+        self.experiments = exps
 
         # Set all flags
         for key, val in params.iteritems():
             setattr(self, key, val)
+
+    def initialise(self, caps=None, bus_counts=None):
+        # Create all the buses
+        for stop in self.network.stops.itervalues():
+            stop.bus_queue = []  # no buses on stops
+            stop.pax_dests = PosCounter()  # no passengers on stops
+
+        for route in self.network.routes.itervalues():
+            for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
+                bus = Bus(route, bus_id, stop)
+                stop.bus_queue.append(bus)
+
+        if bus_counts:
+            for route_id, bus_count in bus_counts.iteritems():
+                self.network.routes[route_id].bus_count = bus_count
+        if caps:
+            for route_id, cap in caps.iteritems():
+                self.network.routes[route_id].capacity = cap
+
+        self.total_rate = self.rates['new_passengers']  # new passengers is always available
+        self.event_map = EventMap()
+        # add buses to departs and increment total_rate
+        for stop in self.network.stops.itervalues():
+            self.event_map.departs.extend(stop.bus_queue)
+            self.total_rate += len(stop.bus_queue) * self.rates['departs']
 
     def dequeue_bus(self, bus):
         """
@@ -180,9 +201,6 @@ class World(object):
                     total_rate += rates['boards']
                     e_map.boards[bus][dest_id] += 1
 
-        self.total_rate = total_rate
-        self.event_map = e_map
-
     def choose_event(self):
         """
         Chooses an event based on the last event.
@@ -234,13 +252,38 @@ class World(object):
             raise Exception("The simulation is not valid.")
         self.network.validate()
 
+    def get_experiments(self, key):
+        """
+        """
+        for comb in product(*self.experiments[key].itervalues()):
+            yield dict(izip(self.experiments[key], comb))
+
+    def experiment(self):
+        """
+        """
+        bus_counts_gen = self.get_experiments('bus_count')
+        for bus_counts in bus_counts_gen:
+            caps_gen = self.get_experiments('cap')
+            for caps in caps_gen:
+                rates_gen = self.get_experiments('rates')
+                for rates in rates_gen:
+                    self.rates.update(rates)
+                    self.initialise(caps=caps, bus_counts=bus_counts)
+                    self.time = 0.0
+                    # print self.network
+                    self.run(silent=True)
+
     def start(self):
         """
         Validate and then start the run loop.
         """
-        self.run()
+        if self.experimental_mode:
+            self.experiment()
+        else:
+            self.initialise()
+            self.run()
 
-    def run(self):
+    def run(self, silent=False):
         """
         Run the simulation until world explodes.
         """
@@ -248,5 +291,6 @@ class World(object):
             delay = self.sample_delay()
             event_type, kwargs = self.choose_event()
             self.update(event_type, **kwargs)
-            log(event_type, time=self.time, **kwargs)
+            if not silent:
+                log(event_type, time=self.time, **kwargs)
             self.time += delay
