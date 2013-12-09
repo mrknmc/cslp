@@ -47,8 +47,12 @@ class Bus(object):
         """
         Return passengers that would like to board this bus.
         """
-        # TODO: maybe get all stops from route and then dict-access them
-        return ifilter(lambda i: self.satisfies(i[0]) and i[1] != 0, self.stop.pax_dests.iteritems())
+        for stop in self.route.stops:
+            stop_id = stop.stop_id
+            stop_dests = self.stop.pax_dests[stop_id]
+            if stop_dests > 0:
+                yield stop_id, stop_dests
+        # return ifilter(lambda i: self.satisfies(i[0]) and i[1] != 0, self.stop.pax_dests.iteritems())
 
     def full(self, offset=0):
         """

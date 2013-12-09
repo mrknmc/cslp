@@ -272,9 +272,6 @@ class World(object):
                     self.time = 0.0
                     # print self.network
                     self.run()
-                    break
-                break
-            break
 
     def start(self):
         """
