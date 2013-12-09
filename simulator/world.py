@@ -4,6 +4,7 @@ from models import Bus
 from collections import Counter
 from events import color_log as log, EventMap, PosCounter
 from parser import parse_file
+from collections import defaultdict
 from itertools import product, izip, cycle
 
 
@@ -38,11 +39,9 @@ class World(object):
                 bus = Bus(route, bus_id, stop)
                 stop.bus_queue.append(bus)
 
-        # Clear out the analysis dict
-        self.missed_pax = {
-            'stops': Counter(),
-            'routes': Counter()
-        }
+        # Clear out the analysis dicts
+        self.missed_pax = {'stops': Counter(), 'routes': Counter()}
+        self.avg_pax = {'buses': defaultdict(lambda: (0, 0)), 'routes': defaultdict(lambda: (0, 0))}
 
         if bus_counts:
             # Update experimental bus counts
@@ -79,6 +78,21 @@ class World(object):
                 if bus.satisfies(dest_id):
                     self.missed_pax['routes'][bus.route.route_id] += count
                     self.missed_pax['stops'][bus.stop.stop_id] += count
+
+    def record_pax_count(self, bus):
+        bus_id = bus.bus_id
+        route_id = bus.route.route_id
+        bus_pax_sum = sum(bus.pax_dests.itervalues())
+
+        # Update bus average
+        count, avg = self.avg_pax['buses'][bus_id]
+        new_avg = (count * avg + bus_pax_sum) / (count + 1.0)
+        self.avg_pax['buses'][bus_id] = count + 1, new_avg
+
+        # Update route average
+        count, avg = self.avg_pax['routes'][route_id]
+        new_avg = (count * avg + bus_pax_sum) / (count + 1.0)
+        self.avg_pax['routes'][route_id] = count + 1, new_avg
 
     def gen_pax(self):
         """
@@ -167,6 +181,7 @@ class World(object):
 
             # Record passengers who couldn't get on
             self.record_missed_pax(bus)
+            self.record_pax_count(bus)
 
             # Update the world
             self.dequeue_bus(bus)
@@ -277,7 +292,7 @@ class World(object):
         self.network.validate()
 
     def log_stats(self):
-        """This should maybe be done for all stops and routes."""
+        """This should maybe be done for all stops, routes and buses."""
         for route_id, count in self.missed_pax['routes'].iteritems():
             print('number of missed passengers route {0} {1}'.format(route_id, count))
 
@@ -287,6 +302,17 @@ class World(object):
             print('number of missed passengers stop {0} {1}'.format(stop_id, count))
 
         print('number of missed passengers {}\n'.format(total))
+
+        for bus_id, (count, mean) in self.avg_pax['buses'].iteritems():
+            print('average passengers bus {0} {1}'.format(bus_id, mean))
+
+        total_count = total_avg = 0.0
+        for route_id, (count, mean) in self.avg_pax['routes'].iteritems():
+            total_count += 1
+            total_avg += mean
+            print('average passengers route {0} {1}'.format(route_id, mean))
+
+        print('average passengers {}\n'.format(total_avg / total_count))
 
     def get_experiments(self, key):
         """
