@@ -1,4 +1,3 @@
-from itertools import ifilter
 from events import PosCounter
 
 

@@ -42,8 +42,9 @@ class World(object):
 
         # Clear out the analysis dicts
         self.missed_pax = {'stops': Counter(), 'routes': Counter()}
-        self.avg_pax = {'buses': defaultdict(lambda: (0, 0)), 'routes': defaultdict(lambda: (0, 0))}
-        self.avg_busq = defaultdict(lambda: (0, 0))
+        self.avg_pax = {'buses': defaultdict(lambda: (0, 0.0)), 'routes': defaultdict(lambda: (0, 0.0))}
+        self.avg_busq = defaultdict(lambda: (0, 0.0))
+        self.avg_paxw = {'stops': defaultdict(lambda: (0, 0.0)), 'routes': defaultdict(lambda: (0, 0.0))}
 
         if bus_counts:
             # Update experimental bus counts
@@ -75,13 +76,12 @@ class World(object):
 
     def record_missed_pax(self, bus):
         """"""
-        if bus.full():
-            for dest_id, count in bus.stop.pax_dests.iteritems():
-                if bus.satisfies(dest_id):
-                    self.missed_pax['routes'][bus.route.route_id] += count
-                    self.missed_pax['stops'][bus.stop.stop_id] += count
+        for dest_id, count in bus.stop.pax_dests.iteritems():
+            if bus.satisfies(dest_id):
+                self.missed_pax['routes'][bus.route.route_id] += count
+                self.missed_pax['stops'][bus.stop.stop_id] += count
 
-    def record_pax_count(self, bus):
+    def record_avg_pax(self, bus):
         bus_id = bus.bus_id
         route_id = bus.route.route_id
         bus_pax_sum = sum(bus.pax_dests.itervalues())
@@ -102,6 +102,20 @@ class World(object):
         qing_count = len(stop.bus_queue[1:])
         count, summa = self.avg_busq[stop_id]
         self.avg_busq[stop_id] = count + 1, summa + qing_count * (self.time - stop.wait_time)
+
+    def record_pax_wait(self):
+        for stop in self.network.stops.itervalues():
+            stop_id = stop.stop_id
+            stop_pax_sum = sum(stop.pax_dests.itervalues())
+            count, summa = self.avg_paxw['stops'][stop_id]
+            self.avg_paxw['stops'][stop_id] = count + 1, summa + stop_pax_sum
+
+        for route in self.network.routes.itervalues():
+            route_id = route.route_id
+            for stop in route.stops:
+                stop_pax_sum = sum(stop.pax_dests.itervalues())
+                count, summa = self.avg_paxw['routes'][route_id]
+                self.avg_paxw['routes'][route_id] = count + 1, summa + stop_pax_sum
 
     def gen_pax(self):
         """
@@ -125,6 +139,8 @@ class World(object):
         rates = self.rates
         total_rate = self.total_rate
         e_map = self.event_map
+
+        self.record_pax_wait()
 
         if event_type == 'boards':
             ebus = kwargs['bus']
@@ -190,8 +206,9 @@ class World(object):
             stop = bus.stop
 
             # Record passengers who couldn't get on
-            self.record_missed_pax(bus)
-            self.record_pax_count(bus)
+            if bus.full():
+                self.record_missed_pax(bus)
+            self.record_avg_pax(bus)
             self.record_bus_wait(stop)
 
             stop.wait_time = self.time
@@ -311,12 +328,12 @@ class World(object):
 
     def log_stats(self):
         """This should maybe be done for all stops, routes and buses."""
+        total = 0
         for route_id, count in self.missed_pax['routes'].iteritems():
+            total += count
             print('number of missed passengers route {0} {1}'.format(route_id, count))
 
-        total = 0
         for stop_id, count in self.missed_pax['stops'].iteritems():
-            total += count
             print('number of missed passengers stop {0} {1}'.format(stop_id, count))
 
         print('number of missed passengers {}\n'.format(total))
@@ -334,12 +351,22 @@ class World(object):
 
         total_count = total_sum = 0.0
         for stop_id, (count, summa) in self.avg_busq.iteritems():
-            print count, summa
             total_count += count
             total_sum += summa
             print('average queueing at stop {0} {1}'.format(stop_id, summa / count))
 
         print('average queueing at all stops {}\n'.format(total_sum / total_count))
+
+        total_count = total_sum = 0.0
+        for route_id, (count, summa) in self.avg_paxw['routes'].iteritems():
+            total_count += count
+            total_sum += summa
+            print('average waiting passengers on route {0} {1}'.format(route_id, summa / count))
+
+        for stop_id, (count, summa) in self.avg_paxw['stops'].iteritems():
+            print('average waiting passengers at stop {0} {1}'.format(stop_id, summa / count))
+
+        print('average waiting passengers {}\n'.format(total_sum / total_count))
 
     def get_experiments(self, key):
         """
