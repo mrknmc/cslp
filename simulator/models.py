@@ -1,4 +1,3 @@
-from itertools import ifilter
 from events import PosCounter
 
 
@@ -108,6 +107,7 @@ class Stop(object):
         self.stop_id = stop_id
         self.bus_queue = []
         self.pax_dests = PosCounter()
+        self.wait_time = 0.0
 
     def __repr__(self):
         return 'Stop({0} | B: {1} | P: {2})'.format(
