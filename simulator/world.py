@@ -24,7 +24,10 @@ class World(object):
         for key, val in params.iteritems():
             setattr(self, key, val)
 
-    def initialise(self, caps=None, bus_counts=None):
+    def initialise(self, rates=None, routes=None):
+        """
+        Initialise the world. Run before every experiment.
+        """
         # Clear out the bus stops
         for stop in self.network.stops.itervalues():
             stop.bus_queue = []  # no buses on stops
@@ -64,7 +67,8 @@ class World(object):
 
     def record_missed_pax(self, bus):
         """
-        The first bus departs from the queue.
+        Update 'Number of Missed Passengers'.
+        Done on per route and per stop basis.
         """
         for dest_id, count in bus.stop.pax_dests.iteritems():
             if bus.satisfies(dest_id):
@@ -72,6 +76,10 @@ class World(object):
                 self.missed_pax['stops'][bus.stop.stop_id] += count
 
     def record_avg_pax(self, bus):
+        """
+        Update 'Average Passengers Per Bus Per Road'.
+        Done on per bus basis only since we can reconstruct route avg from that.
+        """
         bus_id = bus.bus_id
         route_id = bus.route.route_id
         bus_pax_sum = sum(bus.pax_dests.itervalues())
@@ -85,6 +93,10 @@ class World(object):
         self.avg_pax['routes'][route_id] = count + 1, summa + bus_pax_sum
 
     def record_bus_wait(self, stop):
+        """
+        Update 'Average Bus Queuing Time'.
+        Done on per stop basis.
+        """
         stop_id = stop.stop_id
 
         qing_count = len(stop.bus_queue[1:])
@@ -92,6 +104,10 @@ class World(object):
         self.avg_busq[stop_id] = count + 1, summa + qing_count * (self.time - stop.wait_time)
 
     def record_pax_wait(self):
+        """
+        Update 'Average Waiting Passengers'.
+        Done on per stop and per route basis.
+        """
         for stop in self.network.stops.itervalues():
             stop_id = stop.stop_id
             stop_pax_sum = sum(stop.pax_dests.itervalues())
@@ -108,6 +124,7 @@ class World(object):
     def gen_pax(self):
         """
         Generates a passenger on the network.
+        His destination stop must be satisfiable from his origin stop.
         """
         orig = choice(self.network.stops.values())
 
@@ -118,12 +135,17 @@ class World(object):
                 dests.extend(route.stops[:idx])
                 dests.extend(route.stops[idx+1:])
             except ValueError:
+                # raised when the origin stop is not on this route
                 continue
 
         dest = choice(dests)
         return dict(orig=orig, dest=dest)
 
     def update(self, event_type, **kwargs):
+        """
+        Updates the world and the event map based on the last event and its
+        parameters.
+        """
         rates = self.rates
         total_rate = self.total_rate
         e_map = self.event_map
@@ -265,7 +287,7 @@ class World(object):
 
     def choose_event(self):
         """
-        Chooses an event based on the last event.
+        Probabilistically chooses an event.
         """
         rand = random() * self.total_rate
 
@@ -315,7 +337,10 @@ class World(object):
         self.network.validate()
 
     def log_stats(self):
-        """This should maybe be done for all stops, routes and buses."""
+        """
+        Logging the summary statistics
+        """
+        # Number of Missed Passengers
         total = 0
         for route_id in self.network.routes.iterkeys():
             count = self.missed_pax['routes'][route_id]
@@ -330,6 +355,7 @@ class World(object):
 
         for route_id, route in self.network.routes.iteritems():
             for bus_no in xrange(route.bus_count):
+                # construct bus_id dynamically because we don't hold a reference to routes' buses
                 bus_id = '{}.{}'.format(route_id, bus_no)
                 count, summa = self.avg_pax['buses'][bus_id]
                 print('average passengers bus {0} {1}'.format(bus_id, summa / count))
@@ -343,6 +369,7 @@ class World(object):
 
         print('average passengers {}\n'.format(total_sum / total_count))
 
+        # Average Bus Queuing Time
         total_count = total_sum = 0.0
         for stop_id in self.network.stops.iterkeys():
             count, summa = self.avg_busq[stop_id]
@@ -352,6 +379,7 @@ class World(object):
 
         print('average queueing at all stops {}\n'.format(total_sum / total_count))
 
+        # Average Waiting Passengers
         total_count = total_sum = 0.0
         for route_id in self.network.routes.iterkeys():
             count, summa = self.avg_paxw['routes'][route_id]
@@ -373,6 +401,8 @@ class World(object):
 
     def experiment(self):
         """
+        TODO: give some proper names to the fancy generators
+        and variables in this method.
         """
         bus_counts_gen = self.get_experiments('bus_count')
         for bus_counts in bus_counts_gen:

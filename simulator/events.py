@@ -48,6 +48,10 @@ class EventMap(object):
 
 
 class PosCounter(Counter):
+    """
+    Convenience subclass of Counter that removes a key-value pair
+    when value is less than or equal to 0.
+    """
 
     def __setitem__(self, key, val):
         if val <= 0:
