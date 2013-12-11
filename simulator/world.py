@@ -445,11 +445,28 @@ class World(object):
         if rates_gen:
             mombs['rates'] = rates_gen
 
+        best_exp = None
+        best_ans = None
+        best_cost = maxint
+
         for a in (dict(izip(mombs, x)) for x in product(*mombs.itervalues())):
-            self.log_experiment(**a)
+            if not self.optimise:
+                self.log_experiment(**a)
             self.initialise(**a)
             self.time = 0.0
             self.run(silent=True)
+            if not self.optimise:
+                self.log_stats()
+            else:
+                cost = self.get_cost(a)
+                if cost < best_cost:
+                    best_cost = cost
+                    best_exp = dict(a)
+                    best_ans = dict(self.analysis)
+
+        if self.optimise:
+            self.log_experiment(**best_exp)
+            self.analysis = best_ans
             self.log_stats()
 
     def start(self):
@@ -473,6 +490,23 @@ class World(object):
             if not silent:
                 log(event_type, time=self.time, **kwargs)
             self.time += delay
+
+    def get_cost(self, a):
+
+        total_count = total_sum = 0.0
+        for route_id, (count, summa) in self.analysis['avg_wtime']['route'].iteritems():
+            total_count += count
+            total_sum += summa
+
+        total = 0
+        for rate in a['rates'].itervalues():
+            total += rate
+
+        for route in a['routes'].itervalues():
+            total += route.get('cap', 0)
+            total += route.get('bus_count', 0)
+
+        return total * (total_sum / total_count)
 
 
 def log_ans(ans_type, key, *args):
