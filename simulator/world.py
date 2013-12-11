@@ -1,19 +1,17 @@
 from random import choice, random
-from math import log10
-from models import Bus
-from collections import Counter
-from events import color_log as log, EventMap, PosCounter
-from parser import parse_file
-from collections import defaultdict
+from collections import defaultdict, Counter
 from itertools import product, izip, cycle
+from math import log10
+
+from models import Bus
+from events import color_log as log, EventMap, PosCounter
+from formats import ANALYSIS, EXPERIMENTS_PARAMS
+from parser import parse_file
 
 
 class World(object):
 
     def __init__(self, filename=None):
-        """
-        Initialize the world.
-        """
         self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
@@ -36,7 +34,7 @@ class World(object):
         # Add all buses to stops
         for route in self.network.routes.itervalues():
             for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
-                bus = Bus(route, bus_id, stop)
+                bus = Bus(route, bus_id)
                 stop.bus_queue.append(bus)
 
         # Clear out the analysis dicts
@@ -64,18 +62,10 @@ class World(object):
             self.event_map.departs.extend(stop.bus_queue)
             self.total_rate += len(stop.bus_queue) * self.rates['departs']
 
-    def dequeue_bus(self, bus):
+    def record_missed_pax(self, bus):
         """
         The first bus departs from the queue.
         """
-        cur_stop = bus.stop
-        cur_stop.bus_queue.remove(bus)
-        next_stop = bus.route.next_stop(cur_stop.stop_id)  # set next stop
-        bus.road_rate = self.rates[cur_stop.stop_id, next_stop.stop_id]
-        bus.stop = next_stop
-
-    def record_missed_pax(self, bus):
-        """"""
         for dest_id, count in bus.stop.pax_dests.iteritems():
             if bus.satisfies(dest_id):
                 self.missed_pax['routes'][bus.route.route_id] += count
@@ -212,7 +202,7 @@ class World(object):
             stop.wait_time = self.time
 
             # Update the world
-            self.dequeue_bus(bus)
+            bus.dequeue(self.rates)
 
             # Event is not available anymore
             total_rate -= rates['departs']

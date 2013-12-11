@@ -1,69 +1,87 @@
+from itertools import cycle, islice
+
 from events import PosCounter
 
 
 class Bus(object):
 
-    def __init__(self, route, bus_id, stop):
-        """
-        Initialize a new bus. Set its current stop to the
-        n-thstop of the route where n is the bus id.
-
-        Also initialize the number of passengers to 0.
-        """
+    def __init__(self, route, bus_id):
         self.route = route
         self.bus_id = '{}.{}'.format(route.route_id, bus_id)
         self.pax_dests = PosCounter()
-        self.stop = stop
+        self._cur_stop = bus_id % len(route.stops)
         self.road_rate = None
 
     @property
     def in_motion(self):
+        """The bus is in motion if it has some road_rate assigned."""
         return self.road_rate is not None
+
+    @property
+    def stop(self):
+        return self.route.stops[self._cur_stop]
 
     @property
     def departure_ready(self):
         """
         Bus is ready for departure when:
-            - it's not in motion
             - no one wants to disembark the bus
             - it has either full capacity or no passengers want to board.
         """
-        return (
-            not self.in_motion and
-            (self.full() or list(self.boards) == []) and
-            self.disembarks == 0
-        )
+        return (self.full() or list(self.boards) == []) and self.disembarks == 0
 
     @property
     def disembarks(self):
         """
-        Return passengers that have arrived at their destination and want to disembark.
+        Number of passengers who want to disembark at the current stop.
         """
-        return self.pax_dests[self.stop.stop_id]
+        stop_id = self.stop.stop_id
+        return self.pax_dests[stop_id]
 
     @property
     def boards(self):
         """
-        Return passengers that would like to board this bus.
+        Destination, count of passengers pairs from the current stop that would
+        like to board this bus. Only yield counts greater than 0.
         """
         for stop in self.route.stops:
             stop_id = stop.stop_id
-            stop_dests = self.stop.pax_dests[stop_id]
-            if stop_dests > 0:
-                yield stop_id, stop_dests
+            count = self.stop.pax_dests[stop_id]
+            if count > 0:
+                yield stop_id, count
         # return ifilter(lambda i: self.satisfies(i[0]) and i[1] != 0, self.stop.pax_dests.iteritems())
+
+    @property
+    def next_stop(self):
+        """
+        Next stop of this bus on its route. Using a fancy generator
+        that takes the next stop from an infinitely cycled stops list, so that
+        it goes to the first stop after the last one.
+        """
+        return islice(cycle(self.route.stops), self._cur_stop + 1, None).next()
 
     def full(self, offset=0):
         """
-        Returns true if the bus is full.
+        Returns true if the bus is full. The optional offset argument is added
+        to the current number of passengers, e.g.:
+        count = 39, offset = 1, capacity = 40 -> bus is full
         """
         return sum(self.pax_dests.itervalues()) + offset == self.route.capacity
 
     def satisfies(self, dest):
         """
-        Returns True if the bus can satisfy passenger's destination.
+        Checks if the destination is on the bus's route.
         """
         return dest in (stop.stop_id for stop in self.route.stops)
+
+    def dequeue(self, rates):
+        """
+        Sends the bus on its way.
+        """
+        self.stop.bus_queue.remove(self)
+        next_stop = self.next_stop  # set next stop
+        self.road_rate = rates[self.stop.stop_id, next_stop.stop_id]
+        self._cur_stop = (self._cur_stop + 1) % len(self.route.stops)
 
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
@@ -86,13 +104,6 @@ class Route(object):
         self.bus_count = bus_count
         self.capacity = capacity
 
-    def next_stop(self, stop_id):
-        """
-        Returns the next bus stop on this route for a stop_id.
-        """
-        next_idx = next(idx for idx, stop in enumerate(self.stops) if stop.stop_id == stop_id) + 1
-        return self.stops[next_idx % len(self.stops)]
-
     def __repr__(self):
         stop_ids = ', '.join([str(stop.stop_id) for stop in self.stops])
         return 'Route({0} | S: {1})'.format(self.route_id, stop_ids)
@@ -110,7 +121,7 @@ class Stop(object):
         self.wait_time = 0.0
 
     def __repr__(self):
-        return 'Stop({0} | B: {1} | P: {2})'.format(
+        return 'Stop({0} | P: {2} | B: {1})'.format(
             self.stop_id,
             self.bus_queue,
             sum(self.pax_dests.itervalues())
