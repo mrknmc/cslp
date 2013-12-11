@@ -19,21 +19,21 @@ class EventMap(object):
     """
 
     def __init__(self):
-        self.boards = defaultdict(lambda: PosCounter())
+        self.board = defaultdict(lambda: PosCounter())
         self.disembarks = []
         self.departs = []
         self.arrivals = []
 
-    def gen_boards(self):
-        for bus, dct in self.boards.iteritems():
+    def gen_board(self):
+        for bus, dct in self.board.iteritems():
             for dest, count in dct.iteritems():
                 yield bus, dest, count
 
     def __repr__(self):
         arr = []
         arr.append('')
-        arr.append('boards')
-        arr.append(str(self.boards))
+        arr.append('board')
+        arr.append(str(self.board))
         arr.append('')
         arr.append('disembarks')
         arr.append(str(self.disembarks))

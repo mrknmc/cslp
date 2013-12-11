@@ -130,7 +130,7 @@ class World(object):
 
         self.record_pax_wait()
 
-        if event_type == 'boards':
+        if event_type == 'board':
             ebus = kwargs['bus']
             dest_id = kwargs['dest']
             stop = ebus.stop
@@ -144,16 +144,16 @@ class World(object):
                 if bus == ebus:
                     continue  # skip the bus of this event
                 if bus.satisfies(dest_id) and not bus.full():
-                    total_rate -= rates['boards']
-                    e_map.boards[bus][dest_id] -= 1
+                    total_rate -= rates['board']
+                    e_map.board[bus][dest_id] -= 1
                     # Bus may be ready for departure
                     if bus.departure_ready:
                         total_rate += rates['departs']
                         e_map.departs.append(bus)
 
             # The person can not board this bus
-            total_rate -= rates['boards']
-            e_map.boards[ebus][dest_id] -= 1
+            total_rate -= rates['board']
+            e_map.board[ebus][dest_id] -= 1
 
             # This bus could be ready for departure
             if ebus.departure_ready:
@@ -162,9 +162,9 @@ class World(object):
 
             # No one can board this bus anymore - it's full
             if ebus.full():
-                bus_boards = sum(e_map.boards[ebus].itervalues())
-                total_rate -= bus_boards * rates['boards']
-                del(e_map.boards[ebus])
+                bus_boards = sum(e_map.board[ebus].itervalues())
+                total_rate -= bus_boards * rates['board']
+                del(e_map.board[ebus])
 
         elif event_type == 'disembarks':
             bus = kwargs['bus']
@@ -181,8 +181,8 @@ class World(object):
             # If the bus was full then people can now board it
             if bus.full(offset=1):
                 bus_boards = PosCounter(dict(bus.boards))
-                total_rate += sum(bus_boards.itervalues()) * rates['boards']
-                e_map.boards[bus] = bus_boards
+                total_rate += sum(bus_boards.itervalues()) * rates['board']
+                e_map.board[bus] = bus_boards
 
             # If no one else wants to disembark or embark then it is departure ready
             if bus.departure_ready:
@@ -234,8 +234,8 @@ class World(object):
             bus_boards = PosCounter(dict(bus.boards))
             if bus_boards and not bus.full():
                 # Some people want to board the bus
-                total_rate += sum(bus_boards.itervalues()) * rates['boards']
-                e_map.boards[bus] = bus_boards
+                total_rate += sum(bus_boards.itervalues()) * rates['board']
+                e_map.board[bus] = bus_boards
             elif bus.departure_ready:
                 # No one wants to board the bus - it can depart
                 total_rate += rates['departs']
@@ -260,8 +260,8 @@ class World(object):
                     if bus in e_map.departs:
                         total_rate -= rates['departs']
                         e_map.departs.remove(bus)
-                    total_rate += rates['boards']
-                    e_map.boards[bus][dest_id] += 1
+                    total_rate += rates['board']
+                    e_map.board[bus][dest_id] += 1
 
     def choose_event(self):
         """
@@ -269,10 +269,10 @@ class World(object):
         """
         rand = random() * self.total_rate
 
-        for bus, dest, count in self.event_map.gen_boards():
-            rand -= count * self.rates['boards']
+        for bus, dest, count in self.event_map.gen_board():
+            rand -= count * self.rates['board']
             if rand < 0:
-                return 'boards', dict(dest=dest, bus=bus)
+                return 'board', dict(dest=dest, bus=bus)
 
         for bus in self.event_map.disembarks:
             rand -= bus.disembarks * self.rates['disembarks']
@@ -305,7 +305,7 @@ class World(object):
         Next, validate the network.
         """
         if any([
-            self.boards is None,
+            self.board is None,
             self.disembarks is None,
             self.departs is None,
             self.new_passengers is None,
