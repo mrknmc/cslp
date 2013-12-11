@@ -1,6 +1,6 @@
 from itertools import cycle, islice
 
-from events import PosCounter
+from simulator.events import PosCounter
 
 
 class Bus(object):
@@ -172,7 +172,6 @@ class Network(object):
 
         This could probably solved by representing the network as a graph
         and validating the graph.
-
         """
         pass
 

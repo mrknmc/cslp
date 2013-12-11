@@ -1,9 +1,10 @@
 import re
 
 from collections import defaultdict
-from models import Network
-from formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, ROAD_RX, \
-    ROAD_TYPES, RATES_RX, RATES_TYPES, STOP_TIME_RX, IGNORE_WARN_RX, OPTIMIZE_RX
+from simulator.models import Network
+from simulator.formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, \
+    ROAD_RX, ROAD_TYPES, RATES_RX, RATES_TYPES, STOP_TIME_RX, \
+    IGNORE_WARN_RX, OPTIMIZE_RX
 
 
 def parse_file(filename):
@@ -63,11 +64,9 @@ def parse_file(filename):
                         experimental_mode = True
                         rates[name] = ex_rates[0]
                         # Experiments - add every value
-                        # for ex_rate in ex_rates:
                         experiments['rates'][name] = ex_rates
                     else:
                         # Only one value
-                        # experiments['rates'][name].append(match['rate'])
                         rates[name] = match['rate']
                     break
             if match:
@@ -83,7 +82,7 @@ def parse_file(filename):
                 continue
 
             if rxmatch(OPTIMIZE_RX, line):
-                params['optimize'] = True
+                params['optimise'] = True
                 continue
 
             raise Exception(

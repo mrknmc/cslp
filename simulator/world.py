@@ -2,11 +2,12 @@ from random import choice, random
 from collections import defaultdict, Counter
 from itertools import product, izip, cycle
 from math import log10
+from sys import maxint
 
-from models import Bus
-from events import color_log as log, EventMap, PosCounter
-from formats import ANALYSIS, EXPERIMENTS_PARAMS
-from parser import parse_file
+from simulator.models import Bus
+from simulator.events import color_log as log, EventMap, PosCounter
+from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS
+from simulator.parser import parse_file
 
 
 class World(object):

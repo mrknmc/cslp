@@ -2,7 +2,7 @@ from collections import defaultdict, Counter
 
 from lib.termcolor import colored
 
-from formats import EVENTS, EVENT_COLOURS
+from simulator.formats import EVENTS, EVENT_COLOURS
 
 
 def log_event(event_type, **kwargs):
@@ -10,7 +10,10 @@ def log_event(event_type, **kwargs):
 
 
 def color_log(event_type, **kwargs):
-    print(colored('o', EVENT_COLOURS[event_type]), EVENTS[event_type].format(**kwargs))
+    print('{} {}'.format(
+        colored('o', EVENT_COLOURS[event_type]),
+        EVENTS[event_type].format(**kwargs)
+    ))
 
 
 class EventMap(object):

@@ -1,10 +1,11 @@
-from world import World
 import os, sys
+
+from simulator.world import World
 
 
 def main(argv):
     if not argv:
-        print "No input file supplied!"
+        print('No input file supplied!')
         return
     cwd = os.getcwd()
     input_f = os.path.join(cwd, argv[0])
