@@ -2,69 +2,8 @@ import re
 
 from collections import defaultdict
 from models import Network
-
-
-INT_RX = r'\d+'
-FLOAT_RX = r'(\d+(\.\d*)?|\.\d+)'
-NEWLINE_COMMENT_RX = r'^(\n|#.*\n)$'  # matches newline or a comment
-INT_LIST_RX = r'{0}( {0})*'.format(INT_RX)
-FLOAT_LIST_RX = r'{0}( {0})*'.format(FLOAT_RX)
-
-
-def splitter(ftype, sort=False):
-    """'1 2 3' -> [1, 2, 3]"""
-    if sort:
-        return lambda a: sorted(map(ftype, str.split(a, ' ')))
-    else:
-        return lambda a: map(ftype, str.split(a, ' '))
-
-
-EX_ROUTE_RX = r' '.join([
-    r'^route (?P<route_id>{0})',
-    r'stops (?P<stop_ids>{1})',
-    r'buses ((?P<bus_count>{0})|experiment (?P<ex_bus_counts>{1}))',
-    r'capacity ((?P<cap>{0})|experiment (?P<ex_caps>{1}))$'
-]).format(INT_RX, INT_LIST_RX)
-
-EX_ROUTE_TYPES = {
-    'route_id': int,
-    'stop_ids': splitter(int),
-    'bus_count': int,
-    'cap': int,
-    'ex_bus_counts': splitter(int, sort=True),  # this sorted -> avoid removing buses
-    'ex_caps': splitter(int)
-}
-
-
-EX_ROAD_RX = r' '.join([
-    r'^road (?P<orig>{0}) (?P<dest>{0})',
-    r'((?P<rate>{1})|experiment (?P<ex_rates>{2}))$'
-]).format(INT_RX, FLOAT_RX, FLOAT_LIST_RX)
-
-EX_ROAD_TYPES = {
-    'orig': int,
-    'dest': int,
-    'rate': float,
-    'ex_rates': splitter(float)
-}
-
-
-EX_RATES_RX = (
-    ('boards', r'^board ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('disembarks', r'^disembarks ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('departs', r'^departs ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('new_passengers', r'^new passengers ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-)
-
-EX_RATES_TYPES = {
-    'ex_rates': splitter(float),
-    'rate': float
-}
-
-
-STOP_TIME_RX = r'^stop time (?P<stop_time>{0})$'.format(FLOAT_RX)
-IGNORE_WARN_RX = r'^ignore warnings$'
-OPTIMIZE_RX = r'^optimise parameters$'
+from formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, ROAD_RX, \
+    ROAD_TYPES, RATES_RX, RATES_TYPES, STOP_TIME_RX, IGNORE_WARN_RX, OPTIMIZE_RX
 
 
 def parse_file(filename):
