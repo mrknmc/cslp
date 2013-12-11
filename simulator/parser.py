@@ -14,14 +14,8 @@ def parse_file(filename):
     params = {}
     rates = {}
     experiments = {
-        'bus_count': defaultdict(list),
-        'cap': defaultdict(list),
-        'rates': {
-            'boards': [],
-            'disembarks': [],
-            'departs': [],
-            'new_passengers': []
-        }
+        'routes': defaultdict(lambda: defaultdict(int)),
+        'rates': {}
     }
     with open(filename, 'r') as f:
         for line_no, line in enumerate(f, start=1):
@@ -31,7 +25,7 @@ def parse_file(filename):
 
             line = line.rstrip('\n')  # get rid of newline
 
-            match = rxmatch(EX_ROUTE_RX, line, fdict=EX_ROUTE_TYPES)
+            match = rxmatch(ROUTE_RX, line, fdict=ROUTE_TYPES)
             if match:
                 route_id = match['route_id']
                 for name, ex_name in (('bus_count', 'ex_bus_counts'), ('cap', 'ex_caps')):
@@ -40,16 +34,12 @@ def parse_file(filename):
                         # Experiments - add every value
                         match[name] = ex_param_lst[0]
                         experimental_mode = True
-                        for ex_param in ex_param_lst:
-                            experiments[name][route_id].append(ex_param)
-                    else:
-                        # Only one value
-                        experiments[name][route_id].append(match[name])
+                        experiments['routes'][route_id][name] = ex_param_lst
 
                 network.add_route(**match)
                 continue
 
-            match = rxmatch(EX_ROAD_RX, line, fdict=EX_ROAD_TYPES)
+            match = rxmatch(ROAD_RX, line, fdict=ROAD_TYPES)
             if match:
                 orig = match['orig']
                 dest = match['dest']
@@ -58,28 +48,26 @@ def parse_file(filename):
                     experimental_mode = True
                     rates[orig, dest] = ex_rates[0]
                     # Experiments - add every value
-                    experiments['rates'][(orig, dest)] = []
-                    for ex_rate in ex_rates:
-                        experiments['rates'][orig, dest].append(ex_rate)
+                    experiments['rates'][orig, dest] = ex_rates
                 else:
                     # Only one value
-                    experiments['rates'][orig, dest] = [match['rate']]
                     rates[orig, dest] = match['rate']
+
                 continue
 
-            for name, rate_rx in EX_RATES_RX:
-                match = rxmatch(rate_rx, line, fdict=EX_RATES_TYPES)
+            for name, rate_rx in RATES_RX:
+                match = rxmatch(rate_rx, line, fdict=RATES_TYPES)
                 if match:
                     ex_rates = match['ex_rates']
                     if ex_rates:
                         experimental_mode = True
                         rates[name] = ex_rates[0]
                         # Experiments - add every value
-                        for ex_rate in ex_rates:
-                            experiments['rates'][name].append(ex_rate)
+                        # for ex_rate in ex_rates:
+                        experiments['rates'][name] = ex_rates
                     else:
                         # Only one value
-                        experiments['rates'][name].append(match['rate'])
+                        # experiments['rates'][name].append(match['rate'])
                         rates[name] = match['rate']
                     break
             if match:
