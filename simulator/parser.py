@@ -11,8 +11,7 @@ def parse_file(filename):
     """
     """
     network = Network()
-    experimental_mode = False
-    params = {}
+    params = {'optimise': False, 'ignore_warn': False, 'experimental_mode': False}
     rates = {}
     experiments = {
         'routes': defaultdict(lambda: defaultdict(int)),
@@ -34,7 +33,7 @@ def parse_file(filename):
                     if ex_param_lst:
                         # Experiments - add every value
                         match[name] = ex_param_lst[0]
-                        experimental_mode = True
+                        params['experimental_mode'] = True
                         experiments['routes'][route_id][name] = ex_param_lst
 
                 network.add_route(**match)
@@ -46,7 +45,7 @@ def parse_file(filename):
                 dest = match['dest']
                 ex_rates = match['ex_rates']
                 if ex_rates:
-                    experimental_mode = True
+                    params['experimental_mode'] = True
                     rates[orig, dest] = ex_rates[0]
                     # Experiments - add every value
                     experiments['rates'][orig, dest] = ex_rates
@@ -61,7 +60,7 @@ def parse_file(filename):
                 if match:
                     ex_rates = match['ex_rates']
                     if ex_rates:
-                        experimental_mode = True
+                        params['experimental_mode'] = True
                         rates[name] = ex_rates[0]
                         # Experiments - add every value
                         experiments['rates'][name] = ex_rates
@@ -88,8 +87,6 @@ def parse_file(filename):
             raise Exception(
                 'Invalid input on line {0} of file {1}:\n{2!r}'.format(line_no, filename, line)
             )
-
-    params['experimental_mode'] = experimental_mode
 
     return network, rates, params, experiments
 
