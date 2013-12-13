@@ -100,7 +100,7 @@ def rxmatch(pattern, string, ftype=None, fdict=None):
     there is no match.
     """
     match = re.match(pattern, string)
-    if not match:
+    if match is None:
         return False
     groupdict = match.groupdict()
     if not groupdict:
@@ -108,12 +108,10 @@ def rxmatch(pattern, string, ftype=None, fdict=None):
 
     if ftype:
         for key, val in groupdict.iteritems():
-            if val is None:
-                continue
-            groupdict[key] = ftype(val)
+            if val:
+                groupdict[key] = ftype(val)
     elif fdict:
         for key, val in groupdict.iteritems():
-            if val is None:
-                continue
-            groupdict[key] = fdict[key](val)
+            if val:
+                groupdict[key] = fdict[key](val)
     return groupdict

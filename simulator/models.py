@@ -54,11 +54,13 @@ class Bus(object):
     @property
     def next_stop(self):
         """
-        Next stop of this bus on its route. Using a fancy generator
-        that takes the next stop from an infinitely cycled stops list, so that
-        it goes to the first stop after the last one.
+        Next stop of this bus on its route.
         """
-        return islice(cycle(self.route.stops), self._cur_stop + 1, None).next()
+        stops = self.route.stops
+        if self._cur_stop == len(stops) - 1:
+            return stops[0]
+
+        return stops[self._cur_stop + 1]
 
     def full(self, offset=0):
         """

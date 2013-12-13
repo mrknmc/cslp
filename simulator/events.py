@@ -22,7 +22,7 @@ class EventMap(object):
     """
 
     def __init__(self):
-        self.board = defaultdict(lambda: PosCounter())
+        self.board = defaultdict(PosCounter)
         self.disembarks = []
         self.departs = []
         self.arrivals = []
