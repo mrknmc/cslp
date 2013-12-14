@@ -32,7 +32,7 @@ class World(object):
         # Clear out the bus stops
         for stop in self.network.stops.itervalues():
             stop.bus_queue = []  # no buses on stops
-            stop.wait_time = 0.0
+            stop.qtime = 0.0
             stop.pax_dests = PosCounter()  # no passengers on stops
 
         # Add all buses to stops
@@ -46,7 +46,7 @@ class World(object):
         self.analysis = {
             'missed_pax': {'stop': Counter(), 'route': Counter()},
             'avg_pax': tuple_counter(),
-            'avg_qtime': tuple_counter(),
+            'avg_qtime': Counter(),
             'avg_wtime': {'stop': tuple_counter(), 'route': tuple_counter()}
         }
 
@@ -221,7 +221,7 @@ class World(object):
             self.record_avg_pax(bus)
             self.record_bus_wait(stop)
 
-            stop.wait_time = self.time
+            stop.qtime = self.time
 
             # Update the world
             bus.dequeue(self.rates)
@@ -242,7 +242,7 @@ class World(object):
             # Record stop waiting time
             self.record_bus_wait(stop)
 
-            stop.wait_time = self.time
+            stop.qtime = self.time
 
             # Update the world
             stop.bus_queue.append(bus)  # on the stop now
@@ -428,6 +428,12 @@ class World(object):
             name = EXPERIMENTS_PARAMS['road'].format(*name) if isinstance(name, tuple) else name
             print(EXPERIMENTS_PARAMS['rate'].format(name=name, rate=rate))
 
+    def cleanup(self):
+        for stop_id, stop in self.network.stops.iteritems():
+            time_diff = self.stop_time - stop.qtime
+            queueing_buses = max(len(stop.bus_queue) - 1, 0)
+            self.analysis['avg_qtime'][stop_id] += time_diff * queueing_buses
+
     def experiment(self):
         """
         TODO: give some proper names to the fancy generators
@@ -455,6 +461,7 @@ class World(object):
             self.initialise(**a)
             self.time = 0.0
             self.run(silent=True)
+            self.cleanup()
             if not self.optimise:
                 self.log_stats()
             else:
@@ -478,6 +485,8 @@ class World(object):
         else:
             self.initialise()
             self.run()
+            self.cleanup()
+            self.log_stats()
 
     def run(self, silent=False):
         """
