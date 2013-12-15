@@ -107,7 +107,6 @@ class TestFloatRegex(unittest.TestCase):
             '2321897.',
             '124124.23231',
             '25',
-            '0',
         )
         for number in numbers:
             match = self.float_rx.match(number)
@@ -121,6 +120,7 @@ class TestFloatRegex(unittest.TestCase):
             '2..2',
             '.2.2',
             '.2.',
+            '0',
         )
         for nan in non_numbers:
             match = self.float_rx.match(nan)

@@ -10,8 +10,10 @@ def splitter(ftype, sort=False):
 ### REGULAR EXPRESSION FORMATS
 #####################################################################
 
-INT_RX = r'\d+'  # (123|8|09)
-FLOAT_RX = r'(\d+(\.\d*)?|\.\d+)'  # (2.3|0.9|.6)
+# INT_RX = r'\d+'  # (123|8|09)
+INT_RX = r'[1-9]\d*'  # (123|8|09)
+FLOAT_RX = r'(0\d*\.[1-9]\d*|[1-9]\d*(\.\d*)?|\.\d+)'  # (2.3|0.9|.6)
+# FLOAT_RX = r'(\d+(\.\d*)?|\.\d+)'  # (2.3|0.9|.6)
 NEWLINE_COMMENT_RX = r'^(\n|#.*\n)$'  # newline or a comment
 INT_LIST_RX = r'{0}( {0})*'.format(INT_RX)  # 3 5 12 9
 FLOAT_LIST_RX = r'{0}( {0})*'.format(FLOAT_RX)  # 1.1 0.4 .3
@@ -65,6 +67,9 @@ RATES_TYPES = {
     'ex_rates': splitter(float),
     'rate': float
 }
+
+
+RATES_NAMES = ('board', 'disembarks', 'departs', 'new_passengers')
 
 
 #####################################################################
