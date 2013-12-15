@@ -1,7 +1,8 @@
 from itertools import cycle, islice
 
 from simulator.events import PosCounter
-
+from simulator.formats import RATES_NAMES
+from simulator.errors import InputError, InputWarning
 
 class Bus(object):
 
