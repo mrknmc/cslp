@@ -1,7 +1,7 @@
 import unittest
 from random import choice
 
-from tests.fake_world import FakeWorld
+from tests.fake import FakeWorld
 from simulator.models import *
 
 
@@ -18,7 +18,7 @@ disembarks 0.6
 departs 0.5
 new passengers 5
 stop time 80
-""".format(choice([0, 1, 3, 20]))
+""".format(choice([1, 3, 20]))
         self.world = FakeWorld(input_str)
         self.world.initialise()
 
