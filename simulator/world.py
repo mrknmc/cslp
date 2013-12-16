@@ -326,18 +326,16 @@ class World(object):
             log_ans('avg_pax', 'route', route_id, route_avg)
 
         total_avg = 0 if total_sum == 0 else total_sum / total_count
-        log_ans('avg_pax', 'total', total_avg)
 
         # Average Bus Queuing Time
-        total_count = total_sum = 0.0
+        total_sum = 0.0
         for stop_id in self.network.stops.iterkeys():
-            count, summa = self.analysis['avg_qtime'][stop_id]
-            total_count += count
+            summa = self.analysis['avg_qtime'][stop_id]
             total_sum += summa
-            avg = 0 if summa == 0 else summa / count
+            avg = 0 if summa == 0 else summa / self.stop_time
             log_ans('avg_qtime', 'stop', stop_id,  avg)
 
-        total_avg = 0 if total_sum else total_sum / total_count
+        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
         log_ans('avg_qtime', 'total', total_avg)
 
         # Average Waiting Passengers
