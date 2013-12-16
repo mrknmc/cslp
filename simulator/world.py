@@ -422,7 +422,7 @@ class World(object):
         Ensures that the analysis is correct."""
         for stop_id, stop in self.network.stops.iteritems():
             time_diff = self.stop_time - stop.qtime
-            queueing_buses = max(len(stop.bus_queue) - 1, 0)
+            queueing_buses = stop.queue_length
             self.analysis['avg_qtime'][stop_id] += time_diff * queueing_buses
 
     def experiment(self):

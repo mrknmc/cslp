@@ -137,6 +137,11 @@ class Stop(object):
         self.qtime = 0.0
         self.wtime = 0.0
 
+    @property
+    def queue_length(self):
+        """Returns the number of buses that are queueing (not head)."""
+        return max(len(self.bus_queue) - 1, 0)
+
     def __repr__(self):
         return 'Stop({0} | P: {2} | B: {1})'.format(
             self.stop_id,
