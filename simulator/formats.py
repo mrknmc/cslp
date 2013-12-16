@@ -1,8 +1,6 @@
 
 def splitter(ftype, sort=False):
-    """
-    '1 2 3' -> [1, 2, 3]
-    """
+    """'1 2 3' -> [1, 2, 3]"""
     return lambda s: map(ftype, s.split(' '))
 
 

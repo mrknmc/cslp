@@ -1,15 +1,16 @@
 from collections import defaultdict, Counter
-
 from lib.termcolor import colored
 
 from simulator.formats import EVENTS, EVENT_COLOURS
 
 
 def log_event(event_type, **kwargs):
+    """Logs an event to the output."""
     print(EVENTS[event_type].format(**kwargs))
 
 
 def color_log(event_type, **kwargs):
+    """Logs a colored event to the output."""
     print('{} {}'.format(
         colored('o', EVENT_COLOURS[event_type]),
         EVENTS[event_type].format(**kwargs)
@@ -28,6 +29,8 @@ class EventMap(object):
         self.arrivals = []
 
     def gen_board(self):
+        """Generates triples of bus, destination and count of possible
+        board events."""
         for bus, dct in self.board.iteritems():
             for dest, count in dct.iteritems():
                 yield bus, dest, count

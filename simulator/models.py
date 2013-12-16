@@ -5,6 +5,7 @@ from simulator.formats import RATES_NAMES
 from simulator.errors import InputError, InputWarning
 
 class Bus(object):
+    """Model representing a bus object of the simulation."""
 
     def __init__(self, route, bus_id):
         self.route = route
@@ -20,6 +21,7 @@ class Bus(object):
 
     @property
     def stop(self):
+        """Stop of this bus is accessed from the stops of the route."""
         return self.route.stops[self._cur_stop]
 
     @property
@@ -29,22 +31,23 @@ class Bus(object):
             - no one wants to disembark the bus
             - it has either full capacity or no passengers want to board.
         """
-        return (self.full() or list(self.boards) == []) and self.disembarks == 0
+        return self.disembarks == 0 and (self.full() or list(self.boards) == [])
+
+    @property
+    def is_head(self):
+        """True if the bus is the head of its bus stop's bus queue."""
+        return self == self.stop.bus_queue[0]
 
     @property
     def disembarks(self):
-        """
-        Number of passengers who want to disembark at the current stop.
-        """
-        stop_id = self.stop.stop_id
-        return self.pax_dests[stop_id]
+        """Number of passengers who want to disembark at the current stop."""
+        return self.pax_dests[self.stop.stop_id]
 
     @property
     def boards(self):
-        """
-        Destination, count of passengers pairs from the current stop that would
-        like to board this bus. Only yield counts greater than 0.
-        """
+        """Destination, count pairs of passengers from the current stop that would
+        like to board this bus. Only bus at the front of the queue can be boarded.
+        Only yield counts greater than 0."""
         for stop in self.route.stops:
             stop_id = stop.stop_id
             count = self.stop.pax_dests[stop_id]
@@ -54,33 +57,39 @@ class Bus(object):
 
     @property
     def next_stop(self):
-        """
-        Next stop of this bus on its route.
-        """
+        """Next stop of this bus on its route.
+        Loops to the first stop after the last one."""
         stops = self.route.stops
         if self._cur_stop == len(stops) - 1:
             return stops[0]
 
-        return stops[self._cur_stop + 1]
+    def board(self, dest):
+        """Board a passenger with destination dest."""
+        self.pax_dests[dest] += 1
+        self.stop.pax_dests[dest] -= 1
+
+    def disembark(self):
+        """Disembark one passenger at the current stop."""
+        self.pax_dests[self.stop.stop_id] -= 1
+
+    def arrive(self):
+        """Arrive to the current stop. We need to set road_rate to None."""
+        self.stop.bus_queue.append(self)
+        self.road_rate = None
 
     def full(self, offset=0):
-        """
-        Returns true if the bus is full. The optional offset argument is added
+        """Returns true if the bus is full. The optional offset argument is added
         to the current number of passengers, e.g.:
-        count = 39, offset = 1, capacity = 40 -> bus is full
-        """
+        count = 39, offset = 1, capacity = 40 -> bus is full"""
         return sum(self.pax_dests.itervalues()) + offset == self.route.capacity
 
     def satisfies(self, dest):
-        """
-        Checks if the destination is on the bus's route.
-        """
+        """Checks if the destination is on this bus's route."""
         return dest in (stop.stop_id for stop in self.route.stops)
 
     def dequeue(self, rates):
-        """
-        Sends the bus on its way.
-        """
+        """Departs the bus from its stop.
+        Also sets the road_rate and the stop to the next stop on the route."""
         self.stop.bus_queue.remove(self)
         next_stop = self.next_stop  # set next stop
         self.road_rate = rates[self.stop.stop_id, next_stop.stop_id]
@@ -100,6 +109,7 @@ class Bus(object):
 
 
 class Route(object):
+    """Model representing a route object of the simulation."""
 
     def __init__(self, route_id, stops, bus_count, capacity):
         self.route_id = route_id
@@ -116,6 +126,7 @@ class Route(object):
 
 
 class Stop(object):
+    """Model representing a stop object of the simulation."""
 
     def __init__(self, stop_id):
         self.stop_id = stop_id
@@ -136,9 +147,7 @@ class Stop(object):
 
 
 class Network(object):
-    """
-    The object representing the bus network.
-    """
+    """Model representing a network object of the simulation."""
 
     def __init__(self):
         """
@@ -150,11 +159,8 @@ class Network(object):
         self.stops = {}
 
     def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
-        """
-        Create a new route and add it to the network. There is no need
-        to create the stops since for a valid network there will always
-        be roads specifying them.
-        """
+        """Create a new route and add it to the network. Create a stop if it
+        doesn't already exist. Also add references to stops to the route."""
         stops = []
         for stop_id in stop_ids:
             if stop_id in self.stops:

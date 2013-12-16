@@ -9,6 +9,8 @@ from simulator.formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, \
 
 
 def parse_lines(file, filename):
+    """Parses an iterable of lines (with newlines at the end).
+    Returns the network, rates, params and experiments from the input file."""
     network = Network()
     params = {'optimise': False, 'ignore_warn': False, 'experimental_mode': False}
     rates = {}
@@ -91,18 +93,16 @@ def parse_lines(file, filename):
 
 
 def parse_file(filename):
+    """Opens a file and passes it to the parse_lines function."""
     with open(filename, 'r') as f:
         return parse_lines(f, filename)
 
 
 def rxmatch(pattern, string, ftype=None, fdict=None):
-    """
-    Helper function for matching regular expressions. Will convert matched
-    groups into correct type based on the ftype parameter.
-
-    Returns a dictionary if there are any params, True if not and False if
-    there is no match.
-    """
+    """Helper function for matching regular expressions. Will convert matched
+    groups into correct type based on the ftype or fdict parameters.
+    Returns a dictionary if there are any params, True if not, and False if
+    there is no match."""
     match = re.match(pattern, string)
     if match is None:
         return False
