@@ -409,20 +409,20 @@ class World(object):
         best_ans = None
         best_cost = maxint
 
-        for a in (dict(izip(mombs, x)) for x in product(*mombs.itervalues())):
+        for exp_params in (dict(izip(mombs, x)) for x in product(*mombs.itervalues())):
             if not self.optimise:
-                self.log_experiment(**a)
-            self.initialise(**a)
+                self.log_experiment(**exp_params)
+            self.initialise(**exp_params)
             self.time = 0.0
             self.run(silent=True)
             self.cleanup()
             if not self.optimise:
                 self.log_stats()
             else:
-                cost = self.get_cost(a)
+                cost = self.get_cost(exp_params)
                 if cost < best_cost:
                     best_cost = cost
-                    best_exp = dict(a)
+                    best_exp = dict(exp_params)
                     best_ans = dict(self.analysis)
 
         if self.optimise:
@@ -459,15 +459,13 @@ class World(object):
             total_count += count
             total_sum += summa
 
-        total = 0
-        for rate in a['rates'].itervalues():
-            total += rate
+        params_sum = sum(rate for rate in exp_params['rates'].itervalues())
 
-        for route in a['routes'].itervalues():
-            total += route.get('cap', 0)
-            total += route.get('bus_count', 0)
+        for route in exp_params['routes'].itervalues():
+            params_sum += route.get('cap', 0)
+            params_sum += route.get('bus_count', 0)
 
-        return total * (total_sum / total_count)
+        return params_sum * (total_sum / total_count)
 
 
 def log_ans(ans_type, key, *args):
