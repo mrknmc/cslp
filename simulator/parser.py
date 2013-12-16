@@ -1,7 +1,8 @@
 import re
 
 from collections import defaultdict
-from simulator.errors import InputError, InputWarning
+
+from simulator.errors import InputError
 from simulator.models import Network
 from simulator.formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, \
     ROAD_RX, ROAD_TYPES, RATES_RX, RATES_TYPES, STOP_TIME_RX, \
@@ -53,10 +54,9 @@ def parse_lines(file, filename):
             else:
                 # Only one value
                 rates[orig, dest] = match['rate']
-
             continue
 
-        for name, rate_rx in RATES_RX:
+        for name, rate_rx in RATES_RX.iteritems():
             match = rxmatch(rate_rx, line, fdict=RATES_TYPES)
             if match:
                 ex_rates = match['ex_rates']

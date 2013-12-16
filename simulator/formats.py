@@ -53,21 +53,18 @@ ROAD_TYPES = {
 }
 
 
-RATES_RX = (
-    ('board', r'^board ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('disembarks', r'^disembarks ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('departs', r'^departs ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-    ('new_passengers', r'^new passengers ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX)),
-)
+RATES_RX = {
+    'board': r'^board ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX),
+    'disembarks': r'^disembarks ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX),
+    'departs': r'^departs ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX),
+    'new_passengers': r'^new passengers ((?P<rate>{0})|(experiment (?P<ex_rates>{1})))$'.format(FLOAT_RX, FLOAT_LIST_RX),
+}
 
 # types for the rates regexes above
 RATES_TYPES = {
     'ex_rates': splitter(float),
     'rate': float
 }
-
-
-RATES_NAMES = ('board', 'disembarks', 'departs', 'new_passengers')
 
 
 #####################################################################
