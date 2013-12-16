@@ -106,31 +106,9 @@ class World(object):
                 count, summa = self.analysis['avg_wtime']['route'][route_id]
                 self.analysis['avg_wtime']['route'][route_id] = count + 1, summa + stop_pax_sum
 
-    def gen_pax(self):
-        """
-        Generates a passenger on the network.
-        His destination stop must be satisfiable from his origin stop.
-        """
-        orig = choice(self.network.stops.values())
-
-        dests = []
-        for route in self.network.routes.itervalues():
-            try:
-                idx = route.stops.index(orig)
-                dests.extend(route.stops[:idx])
-                dests.extend(route.stops[idx+1:])
-            except ValueError:
-                # raised when the origin stop is not on this route
-                continue
-
-        dest = choice(dests)
-        return dict(orig=orig, dest=dest)
-
-    def update(self, event_type, **kwargs):
-        """
-        Updates the world and the event map based on the last event and its
-        parameters.
-        """
+    def update(self, event_type, bus=None, orig=None, dest=None):
+        """Updates the world and the event map based
+        on the last event and its parameters."""
         rates = self.rates
         total_rate = self.total_rate
         e_map = self.event_map

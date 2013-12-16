@@ -185,10 +185,27 @@ class Network(object):
                 stop = Stop(stop_id)
                 self.stops[stop_id] = stop
             stops.append(stop)
-        route = Route(route_id, stops, bus_count, cap)
-        self.routes[route_id] = route
+        self.routes[route_id] = Route(route_id, stops, bus_count, cap)
 
-    def validate(self):
+    def generate_passenger(self):
+        """Generates a passenger on the network.
+        His destination stop must be satisfiable from his origin stop."""
+        orig = choice(self.stops.values())
+
+        dests = []
+        for route in self.routes.itervalues():
+            try:
+                idx = route.stops.index(orig)
+                dests.extend(route.stops[:idx])
+                dests.extend(route.stops[idx+1:])
+            except ValueError:
+                # raised when the origin stop is not on this route
+                continue
+
+        dest = choice(dests)
+        return dict(orig=orig, dest=dest)
+
+    def validate(self, rates, params):
         """
         Catch errors such as road not added for a route.
         Catch warnings such as road added but there is no route for it.
