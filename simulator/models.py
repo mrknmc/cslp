@@ -98,6 +98,12 @@ class Bus(object):
         self.road_rate = rates[self.stop.stop_id, next_stop.stop_id]
         self._cur_stop = (self._cur_stop + 1) % len(self.route.stops)
 
+    def __hash__(self):
+        return hash(self.bus_id)
+
+    def __eq__(self, other):
+        return self.bus_id == other.bus_id
+
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
             self.bus_id,
@@ -119,6 +125,12 @@ class Route(object):
         self.stops = stops
         self.bus_count = bus_count
         self.capacity = capacity
+
+    def __hash__(self):
+        return hash(self.route_id)
+
+    def __eq__(self, other):
+        return self.route_id == other.route_id
 
     def __repr__(self):
         stop_ids = ', '.join([str(stop.stop_id) for stop in self.stops])
@@ -142,6 +154,12 @@ class Stop(object):
     def queue_length(self):
         """Returns the number of buses that are queueing (not head)."""
         return max(len(self.bus_queue) - 1, 0)
+
+    def __hash__(self):
+        return hash(self.stop_id)
+
+    def __eq__(self, other):
+        return self.stop_id == other.stop_id
 
     def __repr__(self):
         return 'Stop({0} | P: {2} | B: {1})'.format(
