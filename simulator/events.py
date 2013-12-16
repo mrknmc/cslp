@@ -36,21 +36,21 @@ class EventMap(object):
                 yield bus, dest, count
 
     def __repr__(self):
-        arr = []
-        arr.append('')
-        arr.append('board')
-        arr.append(str(self.board))
-        arr.append('')
-        arr.append('disembarks')
-        arr.append(str(self.disembarks))
-        arr.append('')
-        arr.append('departs')
-        arr.append(str(self.departs))
-        arr.append('')
-        arr.append('arrivals')
-        arr.append(str(self.arrivals))
-        arr.append('---------------------------------------------------------')
-        return '\n'.join(arr)
+        return '\n'.join([
+            '',
+            'board',
+            str(self.board),
+            '',
+            'disembarks',
+            str(self.disembarks),
+            '',
+            'departs',
+            str(self.departs),
+            '',
+            'arrivals',
+            str(self.arrivals),
+            '---------------------------------------------------------',
+        ])
 
 
 class PosCounter(Counter):
