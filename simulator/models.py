@@ -1,7 +1,8 @@
-from itertools import cycle, islice
+from itertools import cycle, chain, izip
+from random import choice
 
 from simulator.events import PosCounter
-from simulator.formats import RATES_NAMES
+from simulator.formats import RATES_RX
 from simulator.errors import InputError, InputWarning
 
 class Bus(object):
@@ -216,11 +217,26 @@ class Network(object):
         This could probably solved by representing the network as a graph
         and validating the graph.
         """
-        pass
+        for route in self.routes.itervalues():
+            stop_ids = [stop.stop_id for stop in route.stops]
+            first_last = (stop_ids[-1], stop_ids[0])
+            for orig, dest in chain(izip(stop_ids, stop_ids[1:]), [first_last]):
+                try:
+                    rates[orig, dest]
+                except KeyError:
+                    raise InputError('Road from {} to {} is missing a rate.'.format(orig, dest))
+
+        for rate_name in RATES_RX:
+            try:
+                rates[rate_name]
+            except KeyError:
+                raise InputError('Rate {} is missing from the input.'.format(rate_name))
+
+        if 'stop_time' not in params:
+            raise InputError('Stop time is missing from the input.'.format(rate_name))
+
 
     def __repr__(self):
-        """
-        """
         return """
 Routes: {routes}
 Stops: {stops}
