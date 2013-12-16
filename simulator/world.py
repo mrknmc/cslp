@@ -1,10 +1,9 @@
-from random import choice, random
+from random import random, seed
 from collections import defaultdict, Counter
-from itertools import product, izip, cycle
+from itertools import product, izip
 from math import log10
 from sys import maxint
 
-from simulator.models import Bus
 from simulator.events import color_log as log, EventMap, PosCounter
 from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS
 from simulator.parser import parse_file
@@ -40,8 +39,7 @@ class World(object):
         }
 
         if rates:
-            # Update experimental rates
-            self.rates.update(rates)
+            self.rates.update(rates)  # Update experimental rates
 
         if routes:
             # Update experimental bus counts and capacities
@@ -64,8 +62,10 @@ class World(object):
         Done on per route and per stop basis."""
         for dest_id, count in bus.stop.pax_dests.iteritems():
             if bus.satisfies(dest_id):
-                self.analysis['missed_pax']['route'][bus.route.route_id] += count
-                self.analysis['missed_pax']['stop'][bus.stop.stop_id] += count
+                route_id = bus.route.route_id
+                stop_id = bus.stop.stop_id
+                self.analysis['missed_pax']['route'][route_id] += count
+                self.analysis['missed_pax']['stop'][stop_id] += count
 
     def record_avg_pax(self, bus):
         """Update 'Average Passengers Per Bus Per Road'. Done on per bus basis
@@ -116,47 +116,39 @@ class World(object):
         self.record_pax_wait()
 
         if event_type == 'board':
-            ebus = kwargs['bus']
-            dest_id = kwargs['dest']
-            stop = ebus.stop
+            # self.record_pax_wait(stop)
+            # stop.wtime = self.time
 
-            # Update the world
-            stop.pax_dests[dest_id] -= 1  # no longer on the stop
-            ebus.pax_dests[dest_id] += 1  # now on the bus
+            bus.board(dest)  # Put the passenger on the bus
 
-            # The person can not board any other buses anymore
-            for bus in stop.bus_queue:
-                if bus == ebus:
-                    continue  # skip the bus of this event
-                if bus.satisfies(dest_id) and not bus.full():
+            # The person cannot board any other buses anymore
+            # skip the bus of this event
+            for other_bus in bus.stop.bus_queue[1:]:
+                if other_bus.satisfies(dest) and not other_bus.full():
                     total_rate -= rates['board']
-                    e_map.board[bus][dest_id] -= 1
+                    e_map.board[other_bus][dest] -= 1
                     # Bus may be ready for departure
-                    if bus.departure_ready:
+                    if other_bus.departure_ready:
                         total_rate += rates['departs']
-                        e_map.departs.append(bus)
+                        e_map.departs.append(other_bus)
 
             # The person can not board this bus
             total_rate -= rates['board']
-            e_map.board[ebus][dest_id] -= 1
+            e_map.board[bus][dest] -= 1
 
             # This bus could be ready for departure
-            if ebus.departure_ready:
+            if bus.departure_ready:
                 total_rate += rates['departs']
-                e_map.departs.append(ebus)
+                e_map.departs.append(bus)
 
-            # No one can board this bus anymore - it's full
-            if ebus.full():
-                bus_boards = sum(e_map.board[ebus].itervalues())
+            if bus.full():
+                # No one can board this bus anymore - it's full
+                bus_boards = sum(e_map.board[bus].itervalues())
                 total_rate -= bus_boards * rates['board']
-                del(e_map.board[ebus])
+                del(e_map.board[bus])
 
         elif event_type == 'disembarks':
-            bus = kwargs['bus']
-            stop_id = bus.stop.stop_id
-
-            # Update the world
-            bus.pax_dests[stop_id] -= 1  # no longer on the bus
+            bus.disembark()  # Remove a passenger from the bus
 
             # Event not available anymore
             total_rate -= rates['disembarks']
@@ -175,7 +167,6 @@ class World(object):
                 e_map.departs.append(bus)
 
         elif event_type == 'departs':
-            bus = kwargs['bus']
             stop = bus.stop
 
             # Record passengers who couldn't get on
@@ -185,30 +176,28 @@ class World(object):
             self.record_bus_wait(stop)
             stop.qtime = self.time
 
-            # Update the world
-            bus.dequeue(self.rates)
-
             # Event is not available anymore
             total_rate -= rates['departs']
             e_map.departs.remove(bus)
 
-            # How it affects other events
+            # Update the world
+            bus.dequeue(self.rates)
+
+            # Bus is on the road now
             total_rate += bus.road_rate
             e_map.arrivals.append(bus)
 
         elif event_type == 'arrivals':
-            bus = kwargs['bus']
-            stop = bus.stop
-            road_rate = bus.road_rate
-
             # Record stop waiting time
-            self.record_bus_wait(stop)
+            self.record_bus_wait(bus.stop)
+            bus.stop.qtime = self.time
 
-            stop.qtime = self.time
+            # Event not available anymore
+            e_map.arrivals.remove(bus)
+            total_rate -= bus.road_rate
 
             # Update the world
-            stop.bus_queue.append(bus)  # on the stop now
-            bus.road_rate = None  # no longer on the road
+            bus.arrive()
 
             # Event not available anymore
             e_map.arrivals.remove(bus)
