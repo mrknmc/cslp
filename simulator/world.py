@@ -155,8 +155,8 @@ class World(object):
             if bus.disembarks == 0:
                 e_map.disembarks.remove(bus)
 
-            # If the bus was full then people can now board it
-            if bus.full(offset=1):
+            # If the bus was full and it's the head then people can board it
+            if bus.full(offset=1) and bus.is_head:
                 bus_boards = PosCounter(dict(bus.boards))
                 total_rate += sum(bus_boards.itervalues()) * rates['board']
                 e_map.board[bus] = bus_boards
@@ -180,6 +180,15 @@ class World(object):
             total_rate -= rates['departs']
             e_map.departs.remove(bus)
 
+            # If this was the head bus then the next bus can be boarded now
+            if bus.is_head and len(stop.bus_queue) >= 2:
+                new_head = stop.bus_queue[1]
+                bus_boards = PosCounter(dict(new_head.boards))
+                if bus_boards and not new_head.full():
+                    # Some people want to board the bus
+                    total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    e_map.board[new_head] = bus_boards
+
             # Update the world
             bus.dequeue(self.rates)
 
@@ -199,42 +208,43 @@ class World(object):
             # Update the world
             bus.arrive()
 
-            # Event not available anymore
-            e_map.arrivals.remove(bus)
-            total_rate -= road_rate
+            # People on the stop can board the bus if it's not full and it's the head
+            if bus.is_head and not bus.full():
+                bus_boards = PosCounter(dict(bus.boards))
+                if bus_boards:
+                    # Some people want to board the bus
+                    total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    e_map.board[bus] = bus_boards
 
-            # People on the stop can now board the bus if it isnt full
-            bus_boards = PosCounter(dict(bus.boards))
-            if bus_boards and not bus.full():
-                # Some people want to board the bus
-                total_rate += sum(bus_boards.itervalues()) * rates['board']
-                e_map.board[bus] = bus_boards
-            elif bus.departure_ready:
+            if bus.departure_ready:
                 # No one wants to board the bus - it can depart
                 total_rate += rates['departs']
                 e_map.departs.append(bus)
-
-            # People on the bus can now disembark it
-            bus_disembarks = bus.disembarks
-            # print bus_disembarks
-            total_rate += bus_disembarks * rates['disembarks']
-            if bus_disembarks and bus not in e_map.disembarks:
-                e_map.disembarks.append(bus)
+            else:
+                # People can now disembark the bus
+                bus_disembarks = bus.disembarks
+                total_rate += bus_disembarks * rates['disembarks']
+                if bus_disembarks and bus not in e_map.disembarks:
+                    e_map.disembarks.append(bus)
         else:
             # Update the world
-            orig, dest = kwargs['orig'], kwargs['dest']
             orig.pax_dests[dest.stop_id] += 1
 
-            # The person can board some buses on the origin stop
             dest_id = dest.stop_id
-            for bus in orig.bus_queue:
-                if bus.satisfies(dest_id) and not bus.full():
-                    # Bus can not depart now if it satisfies the destination
-                    if bus in e_map.departs:
-                        total_rate -= rates['departs']
-                        e_map.departs.remove(bus)
+            if orig.bus_queue:
+                head = orig.bus_queue[0]
+
+                if head.satisfies(dest_id) and not head.full():
+                    # The person can board the head of the origin stop
                     total_rate += rates['board']
-                    e_map.board[bus][dest_id] += 1
+                    e_map.board[head][dest_id] += 1
+
+                # Bus cannot depart now if it satisfies the destination
+                for bus in orig.bus_queue:
+                    if bus.satisfies(dest_id) and not bus.full():
+                        if bus in e_map.departs:
+                            total_rate -= rates['departs']
+                            e_map.departs.remove(bus)
 
     def choose_event(self):
         """Chooses an event based on the rates and possible events."""
