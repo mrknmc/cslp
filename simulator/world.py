@@ -27,20 +27,8 @@ class World(object):
             setattr(self, key, val)
 
     def initialise(self, rates=None, routes=None):
-        """
-        Initialise the world. Run before every experiment.
-        """
-        # Clear out the bus stops
-        for stop in self.network.stops.itervalues():
-            stop.bus_queue = []  # no buses on stops
-            stop.qtime = 0.0
-            stop.pax_dests = PosCounter()  # no passengers on stops
-
-        # Add all buses to stops
-        for route in self.network.routes.itervalues():
-            for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
-                bus = Bus(route, bus_id)
-                stop.bus_queue.append(bus)
+        """Initialise the world. Run before every experiment."""
+        self.network.initialise()
 
         # Clear out the analysis dicts
         tuple_counter = lambda: defaultdict(lambda: (0, 0.0))

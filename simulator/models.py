@@ -157,13 +157,22 @@ class Network(object):
     """Model representing a network object of the simulation."""
 
     def __init__(self):
-        """
-        Represent everything using sets as there is no reason for duplicates.
-        """
-        # <route_id> : <route>
-        self.routes = {}
-        # <stop_id> : <stop>
-        self.stops = {}
+        """Represent everything using sets as there is no reason for duplicates."""
+        self.routes = {}  # <route_id> : <route>
+        self.stops = {}  # <stop_id> : <stop>
+
+    def initialise(self):
+        """Initialise the network. Clear out all the bus stops from buses and
+        passengers and add buses to stops."""
+        for stop in self.stops.itervalues():
+            stop.bus_queue = []
+            stop.qtime = 0.0
+            stop.pax_dests = PosCounter()
+
+        for route in self.routes.itervalues():
+            for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
+                bus = Bus(route, bus_id)
+                stop.bus_queue.append(bus)
 
     def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
         """Create a new route and add it to the network. Create a stop if it
