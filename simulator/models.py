@@ -60,7 +60,9 @@ class Bus(object):
         """Next stop of this bus on its route.
         Loops to the first stop after the last one."""
         stops = self.route.stops
-        if self._cur_stop == len(stops) - 1:
+        try:
+            return stops[self._cur_stop + 1]
+        except IndexError:
             return stops[0]
 
     def board(self, dest):
