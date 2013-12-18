@@ -208,6 +208,8 @@ class Network(object):
         """Create a new route and add it to the network. Create a stop if it
         doesn't already exist. Also add references to stops to the route."""
         stops = []
+        if len(stop_ids) < 2:
+            raise InputError('Route {} has only one stop'.format(route_id))
         for stop_id in stop_ids:
             if stop_id in self.stops:
                 stop = self.stops[stop_id]
@@ -246,10 +248,12 @@ class Network(object):
         This could probably solved by representing the network as a graph
         and validating the graph.
         """
-        for route in self.routes.itervalues():
+        for route_id, route in self.routes.iteritems():
             stop_ids = [stop.stop_id for stop in route.stops]
             first_last = (stop_ids[-1], stop_ids[0])
             for orig, dest in chain(izip(stop_ids, stop_ids[1:]), [first_last]):
+                if orig == dest:
+                    raise InputError('Route {} has the same stop twice in a row'.format(route_id))
                 try:
                     rates[orig, dest]
                 except KeyError:
@@ -261,9 +265,30 @@ class Network(object):
             except KeyError:
                 raise InputError('Rate {} is missing from the input.'.format(rate_name))
 
+        for key, rate in rates.iteritems():
+            if isinstance(key, tuple):
+                # We're dealing with a road
+                orig, dest = key
+                found = False
+                try:
+                    orig_stop = self.stops[orig]
+                    dest_stop = self.stops[dest]
+                except KeyError:
+                    # One of the stops is not on any route
+                    raise InputWarning('Road {0} - {1} has a rate but at least one of the stops is not on any route.')
+
+                for route in self.routes.itervalues():
+                    stops = route.stops
+                    try:
+                        found = stops.index(dest_stop) - stops.index(orig_stop) == 0
+                        found = True
+                    except ValueError:
+                        continue  # One of them is not in stops
+                if not found:
+                    raise InputWarning('Road {0} - {1} has a rate but no route contains it'.format(orig, dest))
+
         if 'stop_time' not in params:
             raise InputError('Stop time is missing from the input.'.format(rate_name))
-
 
     def __repr__(self):
         return """
