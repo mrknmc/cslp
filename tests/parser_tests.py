@@ -68,15 +68,14 @@ class TestRatesRegex(unittest.TestCase):
 
     def test_valid_rates(self):
         tests = (
-            ('board', 0.9, 'rate'),
-            ('disembarks', 0.4, 'rate'),
-            ('departs', 0.3, 'rate'),
-            ('new passengers', 0.1, 'rate'),
-            ('stop time', 0.7, 'rate'),
+            ('board', 0.9, 'board'),
+            ('disembarks', 0.4, 'disembarks'),
+            ('departs', 0.3, 'departs'),
+            ('new passengers', 0.1, 'new_passengers'),
         )
-        rates_rx = (rx[1] for rx in RATES_RX)
-        for rate_rx, test in zip(rates_rx, tests):
+        for test in tests:
             line = "{0} {1}".format(*test)
+            rate_rx = RATES_RX[test[2]]
             self.assertEqual(rxmatch(rate_rx, line, ftype=float), {'rate': test[1], 'ex_rates': None})
 
     def test_invalid_rates(self):
