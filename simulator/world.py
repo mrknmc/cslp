@@ -299,7 +299,8 @@ class World(object):
         for route_id, route in self.network.routes.iteritems():
             route_count = route_sum = 0
             for bus_no in xrange(route.bus_count):
-                # construct bus_id dynamically because we don't hold a reference to routes' buses
+                # construct bus_id dynamically because we don't
+                # hold a reference to routes' buses
                 bus_id = '{}.{}'.format(route_id, bus_no)
                 count, summa = self.analysis['avg_pax'][bus_id]
                 route_count += count
@@ -344,21 +345,13 @@ class World(object):
 
         print ('')
 
-    def get_experiments(self, key):
-        """
-        """
-        for comb in product(*self.experiments[key].itervalues()):
-            yield dict(izip(self.experiments[key], comb))
-
     def log_experiment(self, routes, rates):
-        """
-        Log the experimental parameters of routes and experimental rates.
-        """
+        """Log the experimental parameters of routes and experimental rates."""
         for route_id, params in routes.iteritems():
             route = self.network.routes[route_id]
             print(EXPERIMENTS_PARAMS['route'].format(
                 route_id=route_id,
-                stops=' '.join(map(lambda s: str(s.stop_id), route.stops)),
+                stops=' '.join(str(stop.stop_id) for stop in route.stops),
                 bus_count=params.get('bus_count', route.bus_count),
                 cap=params.get('cap', route.capacity)
             ))
@@ -387,31 +380,33 @@ class World(object):
 
     def get_experiments(self, key):
         """"""
-        for comb in product(*self.experiments[key].itervalues()):
-            yield dict(izip(self.experiments[key], comb))
+
 
     def experiment(self):
-        """
-        TODO: give some proper names to the fancy generators
-        and variables in this method.
-        """
-        combs = {}
+        """Run all experiments. If the optimise parameters flag is set,
+        only print the most optimal one."""
+        route_combs = {}
+        # Get all combinations of capacities and bus counts within a route
         for route_id, comb in self.experiments['routes'].iteritems():
-            combs[route_id] = [dict(izip(comb, x)) for x in product(*comb.itervalues())]
+            route_combs[route_id] = (dict(izip(comb, x)) for x in product(*comb.itervalues()))
 
-        mombs = {}
+        combs = {}
+        combs['routes'] = (dict(izip(route_combs, x)) for x in product(*route_combs.itervalues()))
 
-        mombs['routes'] = (dict(izip(combs, x)) for x in product(*combs.itervalues()))
+        rates_combs = []
+        # Get all combinations of all rates
+        for comb in product(*self.experiments[key].itervalues()):
+            rates_combs.append(dict(izip(self.experiments[key], comb)))
 
-        rates_gen = list(self.get_experiments('rates'))
-        if rates_gen:
-            mombs['rates'] = rates_gen
+        if rates_combs:
+            combs['rates'] = rates_combs
 
+        # These variables determine the best set of parameters
         best_exp = None
         best_ans = None
         best_cost = maxint
 
-        for exp_params in (dict(izip(mombs, x)) for x in product(*mombs.itervalues())):
+        for exp_params in (dict(izip(combs, x)) for x in product(*combs.itervalues())):
             if not self.optimise:
                 self.log_experiment(**exp_params)
             self.initialise(**exp_params)
