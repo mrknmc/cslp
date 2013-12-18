@@ -153,6 +153,7 @@ class Stop(object):
         self.bus_queue = []
         self.pax_dests = PosCounter()
         self.qtime = 0.0
+        self.bus_count = 0
         self.wtime = 0.0
 
     @property
@@ -194,15 +195,11 @@ class Network(object):
     def initialise(self):
         """Initialise the network. Clear out all the bus stops from buses and
         passengers and add buses to stops."""
-        for stop in self.stops.itervalues():
-            stop.bus_queue = []
-            stop.qtime = 0.0
-            stop.pax_dests = PosCounter()
-
         for route in self.routes.itervalues():
             for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
                 bus = Bus(route, bus_id)
                 stop.bus_queue.append(bus)
+                stop.bus_count += 1
 
     def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
         """Create a new route and add it to the network. Create a stop if it

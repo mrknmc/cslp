@@ -80,8 +80,8 @@ class World(object):
         """Update 'Average Bus Queuing Time'. Done on per stop basis."""
         qlength = stop.queue_length
         time_diff = self.time - stop.qtime
-        avg_qlength = (time_diff * qlength) / (qlength + 1.0)
-        self.analysis['avg_qtime'][stop.stop_id] += avg_qlength
+        self.analysis['avg_qtime'][stop.stop_id] += time_diff * qlength
+        stop.qtime = self.time
 
     def record_pax_wait(self):
         """Update 'Average Waiting Passengers'.
@@ -162,22 +162,19 @@ class World(object):
                 e_map.departs.append(bus)
 
         elif event_type == 'departs':
-            stop = bus.stop
-
             # Record passengers who couldn't get on
             if bus.full():
                 self.record_missed_pax(bus)
             self.record_avg_pax(bus)
-            self.record_bus_wait(stop)
-            stop.qtime = self.time
+            self.record_bus_wait(bus.stop)
 
             # Event is not available anymore
             total_rate -= rates['departs']
             e_map.departs.remove(bus)
 
             # If this was the head bus then the next bus can be boarded now
-            if bus.is_head and len(stop.bus_queue) >= 2:
-                new_head = stop.bus_queue[1]
+            if bus.is_head and len(bus.stop.bus_queue) >= 2:
+                new_head = bus.stop.bus_queue[1]
                 bus_boards = PosCounter(dict(new_head.boards))
                 if bus_boards and not new_head.full():
                     # Some people want to board the bus
@@ -194,7 +191,7 @@ class World(object):
         elif event_type == 'arrivals':
             # Record stop waiting time
             self.record_bus_wait(bus.stop)
-            bus.stop.qtime = self.time
+            bus.stop.bus_count += 1
 
             # Event not available anymore
             e_map.arrivals.remove(bus)
@@ -325,14 +322,15 @@ class World(object):
         total_avg = 0 if total_sum == 0 else total_sum / total_count
 
         # Average Bus Queuing Time
-        total_sum = 0.0
-        for stop_id in self.network.stops.iterkeys():
+        total_sum = total_count = 0.0
+        for stop_id, stop in self.network.stops.iteritems():
             summa = self.analysis['avg_qtime'][stop_id]
             total_sum += summa
-            avg = 0 if summa == 0 else summa / self.stop_time
+            total_count += stop.bus_count
+            avg = 0 if summa == 0 else summa / stop.bus_count
             log_ans('avg_qtime', 'stop', stop_id,  avg)
 
-        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
+        total_avg = 0 if total_sum == 0 else total_sum / total_count
         log_ans('avg_qtime', 'total', total_avg)
 
         # Average Waiting Passengers
@@ -381,9 +379,24 @@ class World(object):
         """Run after every run of the simulation.
         Ensures that the analysis is correct."""
         for stop_id, stop in self.network.stops.iteritems():
+            # Add remaining queueing buses to stops
             time_diff = self.stop_time - stop.qtime
             queueing_buses = stop.queue_length
             self.analysis['avg_qtime'][stop_id] += time_diff * queueing_buses
+            # Add remamining waiting passengers to stops
+            time_diff = self.stop_time - stop.wtime
+            self.analysis['avg_wtime']['stop'][stop_id] += time_diff * stop.pax_count
+
+        time_diff = self.stop_time - self.wtime
+        # Add remamining waiting passengers to routes
+        for route_id, route in self.network.iteritems():
+            pax_count = (s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += time_diff * pax_count
+
+    def get_experiments(self, key):
+        """"""
+        for comb in product(*self.experiments[key].itervalues()):
+            yield dict(izip(self.experiments[key], comb))
 
     def experiment(self):
         """
