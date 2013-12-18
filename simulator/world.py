@@ -20,6 +20,7 @@ class World(object):
         self.network = network
         self.rates = rates
         self.experiments = exps
+        self.wtime = 0.0
 
         # Set all flags
         for key, val in params.iteritems():
@@ -35,7 +36,7 @@ class World(object):
             'missed_pax': {'stop': Counter(), 'route': Counter()},
             'avg_pax': tuple_counter(),
             'avg_qtime': Counter(),
-            'avg_wtime': {'stop': tuple_counter(), 'route': tuple_counter()}
+            'avg_wtime': {'stop': Counter(), 'route': Counter()}
         }
 
         if rates:
@@ -78,153 +79,141 @@ class World(object):
 
     def record_bus_wait(self, stop):
         """Update 'Average Bus Queuing Time'. Done on per stop basis."""
-        # when bus queue length is 0 take 0, not -1
         qlength = stop.queue_length
         time_diff = self.time - stop.qtime
-        avg_qlength = (time_diff * qlength) / (qlength + 1.0)
-        self.analysis['avg_qtime'][stop.stop_id] += avg_qlength
+        self.analysis['avg_qtime'][stop.stop_id] += time_diff * qlength
+        stop.qtime = self.time
 
-    def record_pax_wait(self):
+    def record_pax_wait(self, bus=None, stop=None):
         """Update 'Average Waiting Passengers'.
         Done on per stop and per route basis."""
-        # stop_id = stop.stop_id
-        # stop_pax_sum = sum(stop.pax_dests.itervalues())
-        # time_diff = self.time - stop.wtime
-        # time, count = self.analysis['avg_wtime']['stop'][stop_id]
-        # self.analysis['avg_wtime']['stop'][stop_id] = time + time_diff
+        if bus:
+            stop = bus.stop
+        pax_count = stop.pax_count
+        stop_id = stop.stop_id
+        time_diff = self.time - stop.wtime
+        self.analysis['avg_wtime']['stop'][stop_id] += pax_count * time_diff
+        stop.wtime = self.time
 
-        for stop in self.network.stops.itervalues():
-            stop_id = stop.stop_id
-            stop_pax_sum = sum(stop.pax_dests.itervalues())
-            time, summa = self.analysis['avg_wtime']['stop'][stop_id]
-            self.analysis['avg_wtime']['stop'][stop_id] = self.time - stop.wtime, summa + stop_pax_sum
+        time_diff = self.time - self.wtime
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += pax_count * time_diff
 
-        for route in self.network.routes.itervalues():
-            route_id = route.route_id
-            for stop in route.stops:
-                stop_pax_sum = sum(stop.pax_dests.itervalues())
-                count, summa = self.analysis['avg_wtime']['route'][route_id]
-                self.analysis['avg_wtime']['route'][route_id] = count + 1, summa + stop_pax_sum
+        self.wtime = self.time
 
     def update(self, event_type, bus=None, orig=None, dest=None):
         """Updates the world and the event map based
         on the last event and its parameters."""
         rates = self.rates
-        total_rate = self.total_rate
         e_map = self.event_map
 
-        self.record_pax_wait()
-
         if event_type == 'board':
-            # self.record_pax_wait(stop)
-            # stop.wtime = self.time
+            self.record_pax_wait(bus=bus)
 
             bus.board(dest)  # Put the passenger on the bus
 
-            # The person cannot board any other buses anymore
-            # skip the bus of this event
+            # Other buses may be ready for departure now
             for other_bus in bus.stop.bus_queue[1:]:
                 if other_bus.satisfies(dest) and not other_bus.full():
-                    # Bus may be ready for departure
                     if other_bus.departure_ready:
-                        total_rate += rates['departs']
+                        self.total_rate += rates['departs']
                         e_map.departs.append(other_bus)
 
             # The person can not board this bus
-            total_rate -= rates['board']
+            self.total_rate -= rates['board']
             e_map.board[bus][dest] -= 1
 
             # This bus could be ready for departure
             if bus.departure_ready:
-                total_rate += rates['departs']
+                self.total_rate += rates['departs']
                 e_map.departs.append(bus)
 
             if bus.full():
                 # No one can board this bus anymore - it's full
                 bus_boards = sum(e_map.board[bus].itervalues())
-                total_rate -= bus_boards * rates['board']
+                self.total_rate -= bus_boards * rates['board']
                 del(e_map.board[bus])
 
         elif event_type == 'disembarks':
             bus.disembark()  # Remove a passenger from the bus
 
             # Event not available anymore
-            total_rate -= rates['disembarks']
+            self.total_rate -= rates['disembarks']
             if bus.disembarks == 0:
                 e_map.disembarks.remove(bus)
 
             # If the bus was full and it's the head then people can board it
             if bus.full(offset=1) and bus.is_head:
                 bus_boards = PosCounter(dict(bus.boards))
-                total_rate += sum(bus_boards.itervalues()) * rates['board']
+                self.total_rate += sum(bus_boards.itervalues()) * rates['board']
                 e_map.board[bus] = bus_boards
 
-            # If no one else wants to disembark or embark then it is departure ready
+            # If no one wants to disembark or embark then it's departure ready
             if bus.departure_ready:
-                total_rate += rates['departs']
+                self.total_rate += rates['departs']
                 e_map.departs.append(bus)
 
         elif event_type == 'departs':
-            stop = bus.stop
-
             # Record passengers who couldn't get on
             if bus.full():
                 self.record_missed_pax(bus)
             self.record_avg_pax(bus)
-            self.record_bus_wait(stop)
-            stop.qtime = self.time
+            self.record_bus_wait(bus.stop)
 
             # Event is not available anymore
-            total_rate -= rates['departs']
+            self.total_rate -= rates['departs']
             e_map.departs.remove(bus)
 
             # If this was the head bus then the next bus can be boarded now
-            if bus.is_head and len(stop.bus_queue) >= 2:
-                new_head = stop.bus_queue[1]
+            if bus.is_head and len(bus.stop.bus_queue) >= 2:
+                new_head = bus.stop.bus_queue[1]
                 bus_boards = PosCounter(dict(new_head.boards))
                 if bus_boards and not new_head.full():
                     # Some people want to board the bus
-                    total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    self.total_rate += sum(bus_boards.itervalues()) * rates['board']
                     e_map.board[new_head] = bus_boards
 
             # Update the world
             bus.dequeue(self.rates)
 
             # Bus is on the road now
-            total_rate += bus.road_rate
+            self.total_rate += bus.road_rate
             e_map.arrivals.append(bus)
 
         elif event_type == 'arrivals':
             # Record stop waiting time
             self.record_bus_wait(bus.stop)
-            bus.stop.qtime = self.time
+            bus.stop.bus_count += 1
 
             # Event not available anymore
             e_map.arrivals.remove(bus)
-            total_rate -= bus.road_rate
+            self.total_rate -= bus.road_rate
 
             # Update the world
             bus.arrive()
 
-            # People on the stop can board the bus if it's not full and it's the head
+            # People on the stop can board the bus if it's not full and is head
             if bus.is_head and not bus.full():
                 bus_boards = PosCounter(dict(bus.boards))
                 if bus_boards:
                     # Some people want to board the bus
-                    total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    self.total_rate += sum(bus_boards.itervalues()) * rates['board']
                     e_map.board[bus] = bus_boards
 
             if bus.departure_ready:
                 # No one wants to board the bus - it can depart
-                total_rate += rates['departs']
+                self.total_rate += rates['departs']
                 e_map.departs.append(bus)
             else:
-                # People can now disembark the bus
+                # People want to disembark the bus
                 bus_disembarks = bus.disembarks
-                total_rate += bus_disembarks * rates['disembarks']
+                self.total_rate += bus_disembarks * rates['disembarks']
                 if bus_disembarks and bus not in e_map.disembarks:
                     e_map.disembarks.append(bus)
         else:
+            self.record_pax_wait(stop=orig)
+
             # Update the world
             orig.pax_dests[dest.stop_id] += 1
 
@@ -234,17 +223,15 @@ class World(object):
 
                 if head.satisfies(dest_id) and not head.full():
                     # The person can board the head of the origin stop
-                    total_rate += rates['board']
+                    self.total_rate += rates['board']
                     e_map.board[head][dest_id] += 1
 
                 # Bus cannot depart now if it satisfies the destination
                 for bus in orig.bus_queue:
                     if bus.satisfies(dest_id) and not bus.full():
                         if bus in e_map.departs:
-                            total_rate -= rates['departs']
+                            self.total_rate -= rates['departs']
                             e_map.departs.remove(bus)
-
-        self.total_rate = total_rate
 
     def choose_event(self):
         """Chooses an event based on the rates and possible events."""
@@ -312,7 +299,8 @@ class World(object):
         for route_id, route in self.network.routes.iteritems():
             route_count = route_sum = 0
             for bus_no in xrange(route.bus_count):
-                # construct bus_id dynamically because we don't hold a reference to routes' buses
+                # construct bus_id dynamically because we don't
+                # hold a reference to routes' buses
                 bus_id = '{}.{}'.format(route_id, bus_no)
                 count, summa = self.analysis['avg_pax'][bus_id]
                 route_count += count
@@ -328,50 +316,42 @@ class World(object):
         total_avg = 0 if total_sum == 0 else total_sum / total_count
 
         # Average Bus Queuing Time
-        total_sum = 0.0
-        for stop_id in self.network.stops.iterkeys():
+        total_sum = total_count = 0.0
+        for stop_id, stop in self.network.stops.iteritems():
             summa = self.analysis['avg_qtime'][stop_id]
             total_sum += summa
-            avg = 0 if summa == 0 else summa / self.stop_time
+            total_count += stop.bus_count
+            avg = 0 if summa == 0 else summa / stop.bus_count
             log_ans('avg_qtime', 'stop', stop_id,  avg)
 
-        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
+        total_avg = 0 if total_sum == 0 else total_sum / total_count
         log_ans('avg_qtime', 'total', total_avg)
 
         # Average Waiting Passengers
-        total_count = total_sum = 0.0
+        total_sum = 0.0
         for route_id in self.network.routes.iterkeys():
-            count, summa = self.analysis['avg_wtime']['route'][route_id]
-            total_count += count
+            summa = self.analysis['avg_wtime']['route'][route_id]
             total_sum += summa
-            avg = 0 if summa == 0 else summa / count
+            avg = 0 if summa == 0 else summa / self.stop_time
             log_ans('avg_wtime', 'route', route_id, avg)
 
         for stop_id in self.network.stops.iterkeys():
-            count, summa = self.analysis['avg_wtime']['stop'][stop_id]
-            avg = 0 if summa == 0 else summa / count
-            log_ans('avg_wtime', 'stop', stop_id, summa / count)
+            summa = self.analysis['avg_wtime']['stop'][stop_id]
+            avg = 0 if summa == 0 else summa / self.stop_time
+            log_ans('avg_wtime', 'stop', stop_id, avg)
 
-        total_avg = 0 if total_sum == 0 else total_sum / total_count
-        log_ans('avg_wtime', 'total', total_sum / total_count)
+        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
+        log_ans('avg_wtime', 'total', total_avg)
 
         print ('')
 
-    def get_experiments(self, key):
-        """
-        """
-        for comb in product(*self.experiments[key].itervalues()):
-            yield dict(izip(self.experiments[key], comb))
-
     def log_experiment(self, routes, rates):
-        """
-        Log the experimental parameters of routes and experimental rates.
-        """
+        """Log the experimental parameters of routes and experimental rates."""
         for route_id, params in routes.iteritems():
             route = self.network.routes[route_id]
             print(EXPERIMENTS_PARAMS['route'].format(
                 route_id=route_id,
-                stops=' '.join(map(lambda s: str(s.stop_id), route.stops)),
+                stops=' '.join(str(stop.stop_id) for stop in route.stops),
                 bus_count=params.get('bus_count', route.bus_count),
                 cap=params.get('cap', route.capacity)
             ))
@@ -384,32 +364,46 @@ class World(object):
         """Run after every run of the simulation.
         Ensures that the analysis is correct."""
         for stop_id, stop in self.network.stops.iteritems():
+            # Add remaining queueing buses to stops
             time_diff = self.stop_time - stop.qtime
             queueing_buses = stop.queue_length
             self.analysis['avg_qtime'][stop_id] += time_diff * queueing_buses
+            # Add remamining waiting passengers to stops
+            time_diff = self.stop_time - stop.wtime
+            self.analysis['avg_wtime']['stop'][stop_id] += time_diff * stop.pax_count
+
+        time_diff = self.stop_time - self.wtime
+        # Add remamining waiting passengers to routes
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += time_diff * pax_count
+
 
     def experiment(self):
-        """
-        TODO: give some proper names to the fancy generators
-        and variables in this method.
-        """
-        combs = {}
+        """Run all experiments. If the optimise parameters flag is set,
+        only print the most optimal one."""
+        route_combs = {}
+        # Get all combinations of capacities and bus counts within a route
         for route_id, comb in self.experiments['routes'].iteritems():
-            combs[route_id] = [dict(izip(comb, x)) for x in product(*comb.itervalues())]
+            route_combs[route_id] = (dict(izip(comb, x)) for x in product(*comb.itervalues()))
 
-        mombs = {}
+        combs = {}
+        combs['routes'] = (dict(izip(route_combs, x)) for x in product(*route_combs.itervalues()))
 
-        mombs['routes'] = (dict(izip(combs, x)) for x in product(*combs.itervalues()))
+        rates_combs = []
+        # Get all combinations of all rates
+        for comb in product(*self.experiments['rates'].itervalues()):
+            rates_combs.append(dict(izip(self.experiments['rates'], comb)))
 
-        rates_gen = list(self.get_experiments('rates'))
-        if rates_gen:
-            mombs['rates'] = rates_gen
+        if rates_combs:
+            combs['rates'] = rates_combs
 
+        # These variables determine the best set of parameters
         best_exp = None
         best_ans = None
         best_cost = maxint
 
-        for exp_params in (dict(izip(mombs, x)) for x in product(*mombs.itervalues())):
+        for exp_params in (dict(izip(combs, x)) for x in product(*combs.itervalues())):
             if not self.optimise:
                 self.log_experiment(**exp_params)
             self.initialise(**exp_params)

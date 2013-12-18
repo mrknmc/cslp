@@ -2,7 +2,7 @@ import re
 
 from collections import defaultdict
 
-from simulator.errors import InputError
+from simulator.errors import InputError, InputWarning
 from simulator.models import Network
 from simulator.formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, \
     ROAD_RX, ROAD_TYPES, RATES_RX, RATES_TYPES, STOP_TIME_RX, \
@@ -15,6 +15,7 @@ def parse_lines(file, filename):
     network = Network()
     params = {'optimise': False, 'ignore_warn': False, 'experimental_mode': False}
     rates = {}
+    excp = None
     experiments = {
         'routes': defaultdict(lambda: defaultdict(int)),
         'rates': {}
@@ -30,6 +31,8 @@ def parse_lines(file, filename):
         match = rxmatch(ROUTE_RX, line, fdict=ROUTE_TYPES)
         if match:
             route_id = match['route_id']
+            if route_id in network.routes:
+                raise InputError('Route {} specified twice.'.format(route_id))
             for name, ex_name in (('bus_count', 'ex_bus_counts'), ('cap', 'ex_caps')):
                 ex_param_lst = match[ex_name]
                 if ex_param_lst:
@@ -45,6 +48,10 @@ def parse_lines(file, filename):
         if match:
             orig = match['orig']
             dest = match['dest']
+            if (orig, dest) in rates:
+                raise InputError('Road rate {0} - {1} specified twice.'.format(orig, dest))
+            if orig == dest:
+                excp = InputWarning('Rate from stop {} to itself specified'.format(orig))
             ex_rates = match['ex_rates']
             if ex_rates:
                 params['experimental_mode'] = True
@@ -59,6 +66,8 @@ def parse_lines(file, filename):
         for name, rate_rx in RATES_RX.iteritems():
             match = rxmatch(rate_rx, line, fdict=RATES_TYPES)
             if match:
+                if name in rates:
+                    raise InputError('Rate {0} specified twice.'.format(name))
                 ex_rates = match['ex_rates']
                 if ex_rates:
                     params['experimental_mode'] = True
@@ -74,14 +83,20 @@ def parse_lines(file, filename):
 
         match = rxmatch(STOP_TIME_RX, line, ftype=float)
         if match:
+            if 'stop_time' in params:
+                raise InputError('Stop time specified twice.')
             params.update(**match)
             continue
 
         if rxmatch(IGNORE_WARN_RX, line):
+            if params['ignore_warn']:
+                raise InputError('Ignore warnings specified twice.')
             params['ignore_warn'] = True
             continue
 
         if rxmatch(OPTIMIZE_RX, line):
+            if params['optimise']:
+                raise InputError('Optimise parameters specified twice.')
             params['optimise'] = True
             continue
 
@@ -89,6 +104,8 @@ def parse_lines(file, filename):
             'Invalid input on line {0} of file {1}:\n{2!r}'.format(line_no, filename, line)
         )
 
+    if excp and not params['ignore_warn']:
+        raise excp
     return network, rates, params, experiments
 
 

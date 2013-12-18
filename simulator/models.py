@@ -66,6 +66,11 @@ class Bus(object):
         except IndexError:
             return stops[0]
 
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
+
     def board(self, dest):
         """Board a passenger with destination dest."""
         self.pax_dests[dest] += 1
@@ -148,12 +153,19 @@ class Stop(object):
         self.bus_queue = []
         self.pax_dests = PosCounter()
         self.qtime = 0.0
+        self.bus_count = 0
         self.wtime = 0.0
 
     @property
     def queue_length(self):
         """Returns the number of buses that are queueing (not head)."""
+        # when bus queue length is 0 take 0, not -1
         return max(len(self.bus_queue) - 1, 0)
+
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
 
     def __hash__(self):
         return hash(self.stop_id)
@@ -183,20 +195,18 @@ class Network(object):
     def initialise(self):
         """Initialise the network. Clear out all the bus stops from buses and
         passengers and add buses to stops."""
-        for stop in self.stops.itervalues():
-            stop.bus_queue = []
-            stop.qtime = 0.0
-            stop.pax_dests = PosCounter()
-
         for route in self.routes.itervalues():
             for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
                 bus = Bus(route, bus_id)
                 stop.bus_queue.append(bus)
+                stop.bus_count += 1
 
     def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
         """Create a new route and add it to the network. Create a stop if it
         doesn't already exist. Also add references to stops to the route."""
         stops = []
+        if len(stop_ids) < 2:
+            raise InputError('Route {} has only one stop'.format(route_id))
         for stop_id in stop_ids:
             if stop_id in self.stops:
                 stop = self.stops[stop_id]
@@ -235,10 +245,12 @@ class Network(object):
         This could probably solved by representing the network as a graph
         and validating the graph.
         """
-        for route in self.routes.itervalues():
+        for route_id, route in self.routes.iteritems():
             stop_ids = [stop.stop_id for stop in route.stops]
             first_last = (stop_ids[-1], stop_ids[0])
             for orig, dest in chain(izip(stop_ids, stop_ids[1:]), [first_last]):
+                if orig == dest:
+                    raise InputError('Route {} has the same stop twice in a row'.format(route_id))
                 try:
                     rates[orig, dest]
                 except KeyError:
@@ -250,9 +262,30 @@ class Network(object):
             except KeyError:
                 raise InputError('Rate {} is missing from the input.'.format(rate_name))
 
+        for key, rate in rates.iteritems():
+            if isinstance(key, tuple):
+                # We're dealing with a road
+                orig, dest = key
+                found = False
+                try:
+                    orig_stop = self.stops[orig]
+                    dest_stop = self.stops[dest]
+                except KeyError:
+                    # One of the stops is not on any route
+                    raise InputWarning('Road {0} - {1} has a rate but at least one of the stops is not on any route.')
+
+                for route in self.routes.itervalues():
+                    stops = route.stops
+                    try:
+                        found = stops.index(dest_stop) - stops.index(orig_stop) == 0
+                        found = True
+                    except ValueError:
+                        continue  # One of them is not in stops
+                if not found:
+                    raise InputWarning('Road {0} - {1} has a rate but no route contains it'.format(orig, dest))
+
         if 'stop_time' not in params:
             raise InputError('Stop time is missing from the input.'.format(rate_name))
-
 
     def __repr__(self):
         return """
