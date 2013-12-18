@@ -6,6 +6,7 @@ class FakeWorld(World):
 
     def __init__(self, input_str):
         self.time = 0.0
+        self.wtime = 0.0
         input_lst = input_str.splitlines(True)
         network, rates, params, exps = parse_lines(input_lst, 'test')
         self.network = network
