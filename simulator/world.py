@@ -125,8 +125,6 @@ class World(object):
             # skip the bus of this event
             for other_bus in bus.stop.bus_queue[1:]:
                 if other_bus.satisfies(dest) and not other_bus.full():
-                    total_rate -= rates['board']
-                    e_map.board[other_bus][dest] -= 1
                     # Bus may be ready for departure
                     if other_bus.departure_ready:
                         total_rate += rates['departs']
@@ -245,6 +243,8 @@ class World(object):
                         if bus in e_map.departs:
                             total_rate -= rates['departs']
                             e_map.departs.remove(bus)
+
+        self.total_rate = total_rate
 
     def choose_event(self):
         """Chooses an event based on the rates and possible events."""
