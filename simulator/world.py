@@ -1,10 +1,10 @@
-from random import random, seed
+from random import random
 from collections import defaultdict, Counter
 from itertools import product, izip
 from math import log10
 from sys import maxint
 
-from simulator.events import color_log as log, EventMap, PosCounter
+from simulator.events import log_event as log, EventMap, PosCounter
 from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS
 from simulator.parser import parse_file
 
@@ -13,7 +13,6 @@ class World(object):
     """Controller object controlling the simulations."""
 
     def __init__(self, filename=None):
-        self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
         network, rates, params, exps = parse_file(filename)
@@ -407,7 +406,6 @@ class World(object):
             if not self.optimise:
                 self.log_experiment(**exp_params)
             self.initialise(**exp_params)
-            self.time = 0.0
             self.run(silent=True)
             self.cleanup()
             if not self.optimise:
@@ -438,6 +436,7 @@ class World(object):
         """
         Run the simulation until world explodes.
         """
+        self.time = 0.0
         while self.time <= self.stop_time:
             delay = self.sample_delay()
             event_type, kwargs = self.choose_event()
