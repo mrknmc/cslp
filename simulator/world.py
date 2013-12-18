@@ -378,9 +378,6 @@ class World(object):
             pax_count = (s.pax_count for s in route.stops)
             self.analysis['avg_wtime']['route'][route_id] += time_diff * pax_count
 
-    def get_experiments(self, key):
-        """"""
-
 
     def experiment(self):
         """Run all experiments. If the optimise parameters flag is set,
@@ -395,8 +392,8 @@ class World(object):
 
         rates_combs = []
         # Get all combinations of all rates
-        for comb in product(*self.experiments[key].itervalues()):
-            rates_combs.append(dict(izip(self.experiments[key], comb)))
+        for comb in product(*self.experiments['rates'].itervalues()):
+            rates_combs.append(dict(izip(self.experiments['rates'], comb)))
 
         if rates_combs:
             combs['rates'] = rates_combs
