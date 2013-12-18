@@ -20,6 +20,7 @@ class World(object):
         self.network = network
         self.rates = rates
         self.experiments = exps
+        self.wtime = 0.0
 
         # Set all flags
         for key, val in params.iteritems():
@@ -35,7 +36,7 @@ class World(object):
             'missed_pax': {'stop': Counter(), 'route': Counter()},
             'avg_pax': tuple_counter(),
             'avg_qtime': Counter(),
-            'avg_wtime': {'stop': tuple_counter(), 'route': tuple_counter()}
+            'avg_wtime': {'stop': Counter(), 'route': Counter()}
         }
 
         if rates:
@@ -83,27 +84,23 @@ class World(object):
         self.analysis['avg_qtime'][stop.stop_id] += time_diff * qlength
         stop.qtime = self.time
 
-    def record_pax_wait(self):
+    def record_pax_wait(self, bus=None, stop=None):
         """Update 'Average Waiting Passengers'.
         Done on per stop and per route basis."""
-        # stop_id = stop.stop_id
-        # stop_pax_sum = sum(stop.pax_dests.itervalues())
-        # time_diff = self.time - stop.wtime
-        # time, count = self.analysis['avg_wtime']['stop'][stop_id]
-        # self.analysis['avg_wtime']['stop'][stop_id] = time + time_diff
+        if bus:
+            stop = bus.stop
+        pax_count = stop.pax_count
+        stop_id = stop.stop_id
+        time_diff = self.time - stop.wtime
+        self.analysis['avg_wtime']['stop'][stop_id] += pax_count * time_diff
+        stop.wtime = self.time
 
-        for stop in self.network.stops.itervalues():
-            stop_id = stop.stop_id
-            stop_pax_sum = sum(stop.pax_dests.itervalues())
-            time, summa = self.analysis['avg_wtime']['stop'][stop_id]
-            self.analysis['avg_wtime']['stop'][stop_id] = self.time - stop.wtime, summa + stop_pax_sum
+        time_diff = self.time - self.wtime
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += pax_count * time_diff
 
-        for route in self.network.routes.itervalues():
-            route_id = route.route_id
-            for stop in route.stops:
-                stop_pax_sum = sum(stop.pax_dests.itervalues())
-                count, summa = self.analysis['avg_wtime']['route'][route_id]
-                self.analysis['avg_wtime']['route'][route_id] = count + 1, summa + stop_pax_sum
+        self.wtime = self.time
 
     def update(self, event_type, bus=None, orig=None, dest=None):
         """Updates the world and the event map based
@@ -111,11 +108,8 @@ class World(object):
         rates = self.rates
         e_map = self.event_map
 
-        self.record_pax_wait()
-
         if event_type == 'board':
-            # self.record_pax_wait(stop)
-            # stop.wtime = self.time
+            self.record_pax_wait(bus=bus)
 
             bus.board(dest)  # Put the passenger on the bus
 
@@ -218,6 +212,8 @@ class World(object):
                 if bus_disembarks and bus not in e_map.disembarks:
                     e_map.disembarks.append(bus)
         else:
+            self.record_pax_wait(stop=orig)
+
             # Update the world
             orig.pax_dests[dest.stop_id] += 1
 
@@ -331,21 +327,20 @@ class World(object):
         log_ans('avg_qtime', 'total', total_avg)
 
         # Average Waiting Passengers
-        total_count = total_sum = 0.0
+        total_sum = 0.0
         for route_id in self.network.routes.iterkeys():
-            count, summa = self.analysis['avg_wtime']['route'][route_id]
-            total_count += count
+            summa = self.analysis['avg_wtime']['route'][route_id]
             total_sum += summa
-            avg = 0 if summa == 0 else summa / count
+            avg = 0 if summa == 0 else summa / self.stop_time
             log_ans('avg_wtime', 'route', route_id, avg)
 
         for stop_id in self.network.stops.iterkeys():
-            count, summa = self.analysis['avg_wtime']['stop'][stop_id]
-            avg = 0 if summa == 0 else summa / count
-            log_ans('avg_wtime', 'stop', stop_id, summa / count)
+            summa = self.analysis['avg_wtime']['stop'][stop_id]
+            avg = 0 if summa == 0 else summa / self.stop_time
+            log_ans('avg_wtime', 'stop', stop_id, avg)
 
-        total_avg = 0 if total_sum == 0 else total_sum / total_count
-        log_ans('avg_wtime', 'total', total_sum / total_count)
+        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
+        log_ans('avg_wtime', 'total', total_avg)
 
         print ('')
 
