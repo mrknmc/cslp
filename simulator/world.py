@@ -374,8 +374,8 @@ class World(object):
 
         time_diff = self.stop_time - self.wtime
         # Add remamining waiting passengers to routes
-        for route_id, route in self.network.iteritems():
-            pax_count = (s.pax_count for s in route.stops)
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
             self.analysis['avg_wtime']['route'][route_id] += time_diff * pax_count
 
 
