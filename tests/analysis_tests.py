@@ -101,12 +101,12 @@ stop time 80
         stop = kwargs['bus'].stop
 
         time_diff = self.world.time - stop.qtime
-        wait = len(stop.bus_queue) - 1 * time_diff
+        wait = stop.queue_length * time_diff
 
-        avg_qtime_count, avg_qtime_sum = self.world.analysis['avg_qtime'][stop.stop_id]
+        qtime = self.world.analysis['avg_qtime'][stop.stop_id]
         self.world.update(event_type, **kwargs)
 
-        self.assertTrue((avg_qtime_count + time_diff, avg_qtime_sum + wait) == self.world.analysis['avg_qtime'][stop.stop_id])
+        self.assertTrue(qtime + wait == self.world.analysis['avg_qtime'][stop.stop_id])
 
     def test_avg_qtime_not_incremented_after_other_events(self):
         """This verifies that the Average Bus Queuing Time is not incremented
@@ -130,15 +130,15 @@ stop time 80
 
     #     bus = kwargs['bus']
     #     stop_id = bus.stop.stop_id
-    #     route_id = bus.route.route_id
+    #     # route_id = bus.route.route_id
 
     #     stop_wtime = self.world.analysis['avg_wtime']['stop'][stop_id]
-    #     route_wtime = self.world.analysis['avg_wtime']['route'][route_id]
+    #     # route_wtime = self.world.analysis['avg_wtime']['route'][route_id]
 
     #     self.world.update(event_type, **kwargs)
 
     #     self.assertTrue(stop_wtime < self.world.analysis['avg_wtime']['stop'][stop_id])
-    #     self.assertTrue(route_wtime < self.world.analysis['avg_wtime']['route'][route_id])
+    #     # self.assertTrue(route_wtime < self.world.analysis['avg_wtime']['route'][route_id])
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
