@@ -78,7 +78,6 @@ class World(object):
 
     def record_bus_wait(self, stop):
         """Update 'Average Bus Queuing Time'. Done on per stop basis."""
-        # when bus queue length is 0 take 0, not -1
         qlength = stop.queue_length
         time_diff = self.time - stop.qtime
         avg_qlength = (time_diff * qlength) / (qlength + 1.0)
@@ -121,11 +120,9 @@ class World(object):
 
             bus.board(dest)  # Put the passenger on the bus
 
-            # The person cannot board any other buses anymore
-            # skip the bus of this event
+            # Other buses may be ready for departure now
             for other_bus in bus.stop.bus_queue[1:]:
                 if other_bus.satisfies(dest) and not other_bus.full():
-                    # Bus may be ready for departure
                     if other_bus.departure_ready:
                         total_rate += rates['departs']
                         e_map.departs.append(other_bus)

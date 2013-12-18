@@ -66,6 +66,11 @@ class Bus(object):
         except IndexError:
             return stops[0]
 
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
+
     def board(self, dest):
         """Board a passenger with destination dest."""
         self.pax_dests[dest] += 1
@@ -153,7 +158,13 @@ class Stop(object):
     @property
     def queue_length(self):
         """Returns the number of buses that are queueing (not head)."""
+        # when bus queue length is 0 take 0, not -1
         return max(len(self.bus_queue) - 1, 0)
+
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
 
     def __hash__(self):
         return hash(self.stop_id)
