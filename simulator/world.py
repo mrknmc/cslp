@@ -4,8 +4,9 @@ from itertools import product, izip
 from math import log10
 from sys import maxint
 
+from simulator.errors import SimulationException, InputError
 from simulator.events import log_event as log, EventMap, PosCounter
-from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS
+from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS, RATES_RX
 from simulator.parser import parse_file
 
 
@@ -268,15 +269,12 @@ class World(object):
         """If any of the needed rates was not set the simulation is not valid.
         Next, validate the network.
         """
-        if any([
-            self.board is None,
-            self.disembarks is None,
-            self.departs is None,
-            self.new_passengers is None,
-            self.stop_time is None
-        ]):
-            raise Exception("The simulation is not valid.")
-        self.network.validate()
+        for rate_name in RATES_RX:
+            try:
+                self.rates[rate_name]
+            except KeyError:
+                raise InputError('Rate {} is missing from the input.'.format(rate_name))
+        self.network.validate(self.rates, self.ignore_warn)
 
     def log_stats(self):
         """Logging the summary statistics"""
@@ -424,13 +422,17 @@ class World(object):
 
     def start(self):
         """Validate and then start the run loop."""
-        if self.experimental_mode:
-            self.experiment()
-        else:
-            self.initialise()
-            self.run()
-            self.cleanup()
-            self.log_stats()
+        try:
+            self.validate()
+            if self.experimental_mode:
+                self.experiment()
+            else:
+                self.initialise()
+                self.run()
+                self.cleanup()
+                self.log_stats()
+        except SimulationException as e:
+            print e
 
     def run(self, silent=False):
         """
