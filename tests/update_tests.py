@@ -58,21 +58,6 @@ stop time 1000
 
         self.assertTrue(bus.departure_ready)
 
-    def test_bus_to_be_head_boards_added_to_event_map(self):
-        """Verifies that after a bus that was on the queue head departs.
-        The next bus' boards event are added to possible events."""
-        # conds = {
-        #     'bus': [lambda b: b.stop.bus_queue and b == b.stop.bus_queue[0]]
-        # }
-        # kwargs = self.world.run(stop_at='arrivals', conds=conds)
-        # bus = kwargs['bus']
-
-        # board_before = self.world.event_map['board'][bus]
-
-        # self.world.update('departs', **kwargs)
-
-        # self.world.event_map['board'][bus]
-
 
 class TestArrivalsUpdate(unittest.TestCase):
 
@@ -107,14 +92,6 @@ stop time 1000
         bus = kwargs['bus']
 
         self.assertTrue(bus.in_motion)
-
-    # def test_bus_boards_after_arrival(self):
-    #     """Verifies that the bus """
-    #     conds = {
-    #         'bus': [lambda b: b.stop.bus_queue and b == b.stop.bus_queue[0]]
-    #     }
-    #     kwargs = self.world.run(stop_at='arrivals', conds=conds)
-
 
 
 if __name__ == '__main__':
