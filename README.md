@@ -30,7 +30,7 @@ Updating possible events dynamically has maybe decreased the maintainability and
 <table>
 <tr><th>Test file</th><th>New version</th><th>Old version</th><th>Speedup</th></tr>
 <tr><td>test2</td><td>2.066</td><td>9.194</td><td>4.45x</td></tr>
-<tr><td>test5</td><td>24.0.46</td><td>135.375</td><td>5.63x</td></tr>
+<tr><td>test5</td><td>5.02</td><td>34.73</td><td>6.92x</td></tr>
 <tr><td>test7</td><td>3.087</td><td>9.837</td><td>3.19x</td></tr>
 </table>
 As we can see the new running time is up to about 5 times faster than the old one. Given that I tried to properly document the code, I think this optimisation was very well worth it.
