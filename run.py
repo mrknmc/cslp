@@ -1,6 +1,7 @@
 import os, sys
 
 from simulator.world import World
+from simulator.errors import SimulationException
 
 
 def main(argv):
@@ -17,6 +18,8 @@ def main(argv):
         world.start()
     except IOError:
         print('Input file does not exist!')
+    except SimulationException as e:
+        print(e)
 
 
 if __name__ == '__main__':
