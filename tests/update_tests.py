@@ -1,7 +1,7 @@
 import unittest
 
 # from simulator.world import InputError, InputWarning
-from tests.fake import parse_file, FakeWorld
+from tests.fake import FakeWorld
 from simulator.models import *
 
 
@@ -120,7 +120,7 @@ stop time 1000
 if __name__ == '__main__':
     suite = unittest.TestSuite()
 
-    for i in xrange(5):
+    for i in xrange(100):
         suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestDepartsUpdate))
         suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestArrivalsUpdate))
     unittest.TextTestRunner().run(suite)
