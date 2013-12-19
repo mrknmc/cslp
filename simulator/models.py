@@ -234,17 +234,8 @@ class Network(object):
         dest = choice(dests)
         return dict(orig=orig, dest=dest)
 
-    def validate(self, rates, params):
-        """
-        Catch errors such as road not added for a route.
-        Catch warnings such as road added but there is no route for it.
-        This should be ran before the simulation.
-
-        There could be more buses than there are stops.
-
-        This could probably solved by representing the network as a graph
-        and validating the graph.
-        """
+    def validate(self, rates, ignore_warn):
+        """Validate the network"""
         for route_id, route in self.routes.iteritems():
             stop_ids = [stop.stop_id for stop in route.stops]
             first_last = (stop_ids[-1], stop_ids[0])
@@ -254,26 +245,21 @@ class Network(object):
                 try:
                     rates[orig, dest]
                 except KeyError:
-                    raise InputError('Road from {} to {} is missing a rate.'.format(orig, dest))
-
-        for rate_name in RATES_RX:
-            try:
-                rates[rate_name]
-            except KeyError:
-                raise InputError('Rate {} is missing from the input.'.format(rate_name))
+                    raise InputError('Road {0}-{1} is missing a rate.'.format(orig, dest))
 
         for key, rate in rates.iteritems():
             if isinstance(key, tuple):
                 # We're dealing with a road
                 orig, dest = key
-                found = False
                 try:
                     orig_stop = self.stops[orig]
                     dest_stop = self.stops[dest]
                 except KeyError:
                     # One of the stops is not on any route
-                    raise InputWarning('Road {0} - {1} has a rate but at least one of the stops is not on any route.')
+                    if not ignore_warn:
+                        raise InputWarning('Road {0}-{1} has a rate but at least one of the stops is not on any route.'.format(orig, dest))
 
+                found = False
                 for route in self.routes.itervalues():
                     stops = route.stops
                     try:
@@ -282,10 +268,8 @@ class Network(object):
                     except ValueError:
                         continue  # One of them is not in stops
                 if not found:
-                    raise InputWarning('Road {0} - {1} has a rate but no route contains it'.format(orig, dest))
-
-        if 'stop_time' not in params:
-            raise InputError('Stop time is missing from the input.'.format(rate_name))
+                    if not ignore_warn:
+                        raise InputWarning('Road {0}-{1} has a rate but no route contains it'.format(orig, dest))
 
     def __repr__(self):
         return """

@@ -104,8 +104,12 @@ def parse_lines(file, filename):
             'Invalid input on line {0} of file {1}:\n{2!r}'.format(line_no, filename, line)
         )
 
+    if 'stop_time' not in params:
+        raise InputError('Stop time is missing from the input.')
+
     if excp and not params['ignore_warn']:
         raise excp
+
     return network, rates, params, experiments
 
 
