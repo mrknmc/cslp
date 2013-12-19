@@ -1,230 +1,301 @@
-from util import log
+from itertools import cycle, chain, izip
+from random import choice
 
-from itertools import cycle, izip, repeat
-from collections import defaultdict
-
+from simulator.events import PosCounter
+from simulator.errors import InputError, InputWarning
 
 class Bus(object):
+    """
+    Model representing a bus object of the simulation.
+        route - the route of this bus
+        bus_id - unique id of this bus
+        pax_dests - dictionary with destinations as keys and counts as values
+        _cur_stop - the stop of the route the bus is on
+        road_rate - rate of the road the bus is on"""
 
-    def __init__(self, route, bus_id, capacity, stop, road_rate):
-        """
-        Initialize a new bus. Set its current stop to the
-        n-thstop of the route where n is the bus id.
-
-        Also initialize the number of passengers to 0.
-        """
+    def __init__(self, route, bus_id):
         self.route = route
-        self.bus_id = bus_id
-        self.capacity = capacity
-        self.passengers = []
-        self.stop = stop
-        self.road_rate = road_rate
-
-    @property
-    def uid(self):
-        return '{0}.{1}'.format(self.route.route_id, self.bus_id)
+        self.bus_id = '{}.{}'.format(route.route_id, bus_id)
+        self.pax_dests = PosCounter()
+        self._cur_stop = bus_id % len(route.stops)
+        self.road_rate = None
 
     @property
     def in_motion(self):
+        """The bus is in motion if it has some road_rate assigned."""
         return self.road_rate is not None
 
-    def can_satisfy(self, passenger):
-        """
-        Returns True if the bus can satisfy passenger's destination.
-        """
-        stop_ids = map(lambda s: s.stop_id, self.route.stops)
-        return (passenger.dest in stop_ids)
+    @property
+    def stop(self):
+        """Stop of this bus is accessed from the stops of the route."""
+        return self.route.stops[self._cur_stop]
 
-    def ready_for_departure(self):
+    @property
+    def departure_ready(self):
         """
-        Bus is ready for departure when it's not in motion, no one wants to disembark the bus
-        and it has either full capacity or the bus stop has no passengers who want to board.
+        Bus is ready for departure when:
+            - no one wants to disembark the bus
+            - it has either full capacity or no passengers want to board.
         """
-        return (not self.in_motion) and \
-               (self.full_capacity() or self.no_boarders()) and \
-               self.no_disembarks()
+        return self.disembarks == 0 and (self.full() or list(self.boards) == [])
 
-    def disembarking_passengers(self):
-        """
-        Return passengers that have arrived at their destination and want to disembark.
-        """
-        for pax, bus in izip(self.passengers, repeat(self)):
-            if pax.dest == self.stop.stop_id:
-                yield pax, bus
+    @property
+    def is_head(self):
+        """True if the bus is the head of its bus stop's bus queue."""
+        return self == self.stop.bus_queue[0]
 
-    def full_capacity(self):
-        """
-        Returns true if the number of passengers is equal to the capacity.
-        """
-        return len(self.passengers) == self.capacity
+    @property
+    def disembarks(self):
+        """Number of passengers who want to disembark at the current stop."""
+        return self.pax_dests[self.stop.stop_id]
 
-    def no_boarders(self):
-        """
-        Returns true if there are no passengers who want to board at the current bus stop.
-        """
-        return list(self.stop.boarding_passengers(bus=self)) == []
+    @property
+    def boards(self):
+        """Destination, count pairs of passengers from the current stop that would
+        like to board this bus. Only bus at the front of the queue can be boarded.
+        Only yield counts greater than 0."""
+        for stop in self.route.stops:
+            stop_id = stop.stop_id
+            count = self.stop.pax_dests[stop_id]
+            if count > 0:
+                yield stop_id, count
 
-    def no_disembarks(self):
-        """
-        Returns true if there are no passengers who want to disembark at the current bus stop.
-        """
-        return list(self.disembarking_passengers()) == []
+    @property
+    def next_stop(self):
+        """Next stop of this bus on its route.
+        Loops to the first stop after the last one."""
+        stops = self.route.stops
+        try:
+            return stops[self._cur_stop + 1]
+        except IndexError:
+            return stops[0]
+
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
+
+    def board(self, dest):
+        """Board a passenger with destination dest."""
+        self.pax_dests[dest] += 1
+        self.stop.pax_dests[dest] -= 1
+
+    def disembark(self):
+        """Disembark one passenger at the current stop."""
+        self.pax_dests[self.stop.stop_id] -= 1
+
+    def arrive(self):
+        """Arrive to the current stop. We need to set road_rate to None."""
+        self.stop.bus_queue.append(self)
+        self.road_rate = None
+
+    def full(self, offset=0):
+        """Returns true if the bus is full. The optional offset argument is added
+        to the current number of passengers, e.g.:
+        count = 39, offset = 1, capacity = 40 -> bus is full"""
+        return sum(self.pax_dests.itervalues()) + offset == self.route.capacity
+
+    def satisfies(self, dest):
+        """Checks if the destination is on this bus's route."""
+        return dest in (stop.stop_id for stop in self.route.stops)
+
+    def dequeue(self, rates):
+        """Departs the bus from its stop.
+        Also sets the road_rate and the stop to the next stop on the route."""
+        self.stop.bus_queue.remove(self)
+        next_stop = self.next_stop  # set next stop
+        self.road_rate = rates[self.stop.stop_id, next_stop.stop_id]
+        self._cur_stop = (self._cur_stop + 1) % len(self.route.stops)
+
+    def __hash__(self):
+        return hash(self.bus_id)
+
+    def __eq__(self, other):
+        return self.bus_id == other.bus_id
 
     def __repr__(self):
         return 'Bus({0} | C: {1} | S: {2} | R: {3} | P: {4})'.format(
-            self.uid,
-            self.capacity,
+            self.bus_id,
+            self.route.capacity,
             self.stop.stop_id,
             self.road_rate if self.road_rate else '-',
-            len(self.passengers)
+            sum(self.pax_dests.itervalues())
         )
 
     def __str__(self):
-        return '{0}'.format(self.uid)
-
-
-class Passenger(object):
-
-    def __init__(self, orig, dest):
-        self.orig = orig
-        self.dest = dest
-
-    def __repr__(self):
-        return 'Pax({0} - {1})'.format(self.orig, self.dest)
+        return self.bus_id
 
 
 class Route(object):
+    """
+    Model representing a route object of the simulation.
+        route_id - unique id of this route
+        stops - list of stops of this route
+        bus_count - number of buses on this route
+        capacity - capacity of buses on this route"""
 
-    def __init__(self, route_id, stops, bus_count, bus_capacity):
+    def __init__(self, route_id, stops, bus_count, capacity):
         self.route_id = route_id
-        self.buses = []
         self.stops = stops
+        self.bus_count = bus_count
+        self.capacity = capacity
 
-        # Create all the buses
-        for bus_id, stop in zip(range(bus_count), cycle(stops)):
-            bus = Bus(self, bus_id, bus_capacity, stop, None)
-            stop.bus_queue.append(bus)
-            self.buses.append(bus)
+    def __hash__(self):
+        return hash(self.route_id)
 
-    def get_next_stop(self, stop_id):
-        """
-        Returns the next bus stop on this route for a stop_id.
-        """
-        next_idx = next(idx for idx, stop in enumerate(self.stops) if stop.stop_id == stop_id) + 1
-        return self.stops[next_idx % len(self.stops)]
+    def __eq__(self, other):
+        return self.route_id == other.route_id
 
     def __repr__(self):
-        return 'Route({0} | B: {1} | S: {2})'.format(self.route_id, len(self.buses), self.stop_ids)
+        stop_ids = ', '.join([str(stop.stop_id) for stop in self.stops])
+        return 'Route({0} | S: {1})'.format(self.route_id, stop_ids)
 
     def __str__(self):
         return '{0}'.format(self.route_id)
 
 
 class Stop(object):
+    """
+    Model representing a stop object of the simulation.
+        stop_id - unique id of this stop
+        bus_queue - buses on the stop
+        pax_dests - dictionary with destinations as keys and counts as values
+        qtime - time when the average queueing buses stat was last updated
+        bus_count - number of bus visists (arrival-departs) on this stop
+        wtime - time when the average waiting passengers was last updated"""
 
     def __init__(self, stop_id):
         self.stop_id = stop_id
         self.bus_queue = []
-        self.passengers = []
+        self.pax_dests = PosCounter()
+        self.qtime = 0.0
+        self.bus_count = 0
+        self.wtime = 0.0
 
-    def departing_buses(self):
-        """
-        Returns all the buses ready for departure.
-        """
-        return filter(Bus.ready_for_departure, self.bus_queue)
+    @property
+    def queue_length(self):
+        """Returns the number of buses that are queueing (not head)."""
+        # when bus queue length is 0 take 0, not -1
+        return max(len(self.bus_queue) - 1, 0)
 
-    def boarding_passengers(self, bus=None):
-        """
-        Returns all the passengers ready to board.
-        """
-        if not bus:
-            for bus in self.bus_queue:
-                for pax in self.passengers:
-                    if bus.can_satisfy(pax):
-                        yield pax, bus
-        else:
-            for pax in self.passengers:
-                if bus.can_satisfy(pax):
-                    yield pax, bus
+    @property
+    def pax_count(self):
+        """Returns the number of passengers on this bus."""
+        return sum(self.pax_dests.itervalues())
+
+    def __hash__(self):
+        return hash(self.stop_id)
+
+    def __eq__(self, other):
+        return self.stop_id == other.stop_id
 
     def __repr__(self):
-        return 'Stop({0} | B: {1} | P: {2})'.format(self.stop_id, self.bus_queue, self.passengers)
+        return 'Stop({0} | P: {2} | B: {1})'.format(
+            self.stop_id,
+            self.bus_queue,
+            sum(self.pax_dests.itervalues())
+        )
 
     def __str__(self):
         return str(self.stop_id)
 
 
 class Network(object):
-    """
-    The object representing the bus network.
-    """
+    """Model representing a network object of the simulation.
+        routes - dict with route_id as key route as value
+        stops - dict with stop_id as key stop as value"""
 
     def __init__(self):
-        """
-        Represent everything using sets as there is no reason for duplicates.
-        """
-        # TODO: Maybe use matrix when dense and list when sparse?
-        self.roads = {
-            # <stop_id, stop_id> : rate
-        }
-        self.routes = {
-            # <route_id> : <route>
-        }
-        self.stops = {
-            # <stop_id> : <stop>
-        }
+        self.routes = {}  # <route_id> : <route>
+        self.stops = {}  # <stop_id> : <stop>
 
-    def add_route(self, route_id, stop_ids, bus_count, cap):
-        """
-        Create a new route and add it to the network. There is no need
-        to create the stops since for a valid network there will always
-        be roads specifying them.
-        """
-        stops = map(Stop, stop_ids)
-        route = Route(route_id, stops, bus_count, cap)
-        self.stops = dict(zip(stop_ids, stops))
-        self.routes[route_id] = route
-
-    def add_road(self, orig, dest, rate):
-        """
-        Create a new road, its stops and add it to the network.
-        """
-        self.roads[orig, dest] = rate
-
-    def get_buses(self):
-        """
-        Returns all the buses in the network.
-        """
-        for route in self.routes.itervalues():
-            for bus in route.buses:
-                yield bus
-
-    def get_stops(self):
-        """
-        Returns all the stops in the network.
-        """
+    def initialise(self):
+        """Initialise the network. Clear out all the bus stops from buses and
+        passengers and add buses to stops."""
         for stop in self.stops.itervalues():
-            yield stop
+             stop.bus_queue = []
+             stop.qtime = 0.0
+             stop.pax_dests = PosCounter()
 
-    def validate(self):
-        """
-        Catch errors such as road not added for a route.
-        Catch warnings such as road added but there is no route for it.
-        This should be ran before the simulation.
+        for route in self.routes.itervalues():
+            for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
+                bus = Bus(route, bus_id)
+                stop.bus_queue.append(bus)
+                stop.bus_count += 1
 
-        There could be more buses than there are stops.
+    def add_route(self, route_id, stop_ids, bus_count, cap, **kwargs):
+        """Create a new route and add it to the network. Create a stop if it
+        doesn't already exist. Also add references to stops to the route."""
+        stops = []
+        if len(stop_ids) < 2:
+            raise InputError('Route {} has only one stop'.format(route_id))
+        for stop_id in stop_ids:
+            if stop_id in self.stops:
+                stop = self.stops[stop_id]
+            else:
+                stop = Stop(stop_id)
+                self.stops[stop_id] = stop
+            stops.append(stop)
+        self.routes[route_id] = Route(route_id, stops, bus_count, cap)
 
-        This could probably solved by representing the network as a graph
-        and validating the graph.
+    def generate_passenger(self):
+        """Generates a passenger on the network.
+        His destination stop must be satisfiable from his origin stop."""
+        orig = choice(self.stops.values())
 
-        """
-        pass
+        dests = []
+        for route in self.routes.itervalues():
+            try:
+                idx = route.stops.index(orig)
+                dests.extend(route.stops[:idx])
+                dests.extend(route.stops[idx+1:])
+            except ValueError:
+                # raised when the origin stop is not on this route
+                continue
+
+        dest = choice(dests)
+        return dict(orig=orig, dest=dest)
+
+    def validate(self, rates, ignore_warn):
+        """Validate the network. The exception messages describe what we
+        are checking."""
+        for route_id, route in self.routes.iteritems():
+            stop_ids = [stop.stop_id for stop in route.stops]
+            first_last = (stop_ids[-1], stop_ids[0])
+            for orig, dest in chain(izip(stop_ids, stop_ids[1:]), [first_last]):
+                if orig == dest:
+                    raise InputError('Route {} has the same stop twice in a row'.format(route_id))
+                try:
+                    rates[orig, dest]
+                except KeyError:
+                    raise InputError('Road {0}-{1} is missing a rate.'.format(orig, dest))
+
+        for key, rate in rates.iteritems():
+            if isinstance(key, tuple):
+                # We're dealing with a road
+                orig, dest = key
+                try:
+                    orig_stop = self.stops[orig]
+                    dest_stop = self.stops[dest]
+                except KeyError:
+                    # One of the stops is not on any route
+                    if not ignore_warn:
+                        raise InputWarning('Road {0}-{1} has a rate but at least one of the stops is not on any route.'.format(orig, dest))
+
+                found = False
+                for route in self.routes.itervalues():
+                    stops = route.stops
+                    try:
+                        found = stops.index(dest_stop) - stops.index(orig_stop) == 0
+                        found = True
+                    except ValueError:
+                        continue  # One of them is not in stops
+                if not found:
+                    if not ignore_warn:
+                        raise InputWarning('Road {0}-{1} has a rate but no route contains it'.format(orig, dest))
 
     def __repr__(self):
-        """
-        """
         return """
-Roads: {roads}
-
 Routes: {routes}
-        """.format(roads=[list(r) for r in self.roads], routes=self.routes.values())
+Stops: {stops}
+        """.format(routes=self.routes.values(), stops=self.stops.values())

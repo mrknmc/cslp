@@ -1,0 +1,6 @@
+#!/bin/bash
+python2.7 -m tests/analysis_tests
+python2.7 -m tests/models_tests
+python2.7 -m tests/parser_tests
+python2.7 -m tests/update_tests
+python2.7 -m tests/validation_tests

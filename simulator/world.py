@@ -1,200 +1,487 @@
-from collections import defaultdict
-from itertools import ifilterfalse, chain, imap
-from operator import itemgetter
-from random import random, choice
+from random import random
+from collections import defaultdict, Counter
+from itertools import product, izip
 from math import log10
+from sys import maxint
 
-from util import log, weighted_choice
-from models import Passenger
-from parser import parse_file
-from events import event_dispatch
+from simulator.errors import InputError
+from simulator.events import log_event as log, EventMap, PosCounter
+from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS, RATES_RX
+from simulator.parser import parse_file
 
 
 class World(object):
+    """
+    Controller object controlling the simulations.
+        network - the bus network we run the simulation on
+        rates - dictionary of event rates
+                (board, disembarks, departs, arrivals, new_passengers)
+        experiments - dictionary of experiment values
+                routes: <route_id>: {bus_count: <bus_count>, cap: <capacity>}
+                rates: <rate_name or dest,orig>: <rate>
+        wtime - time since the last avg waiting passenger update for all routes
+        stop_time - Time for which to run the simulation
+        ignore_warn - Whether to ignore warnings
+        optimise - Whether to choose optimal combination of experimental
+                parameters
+    """
 
     def __init__(self, filename=None):
-        """
-        Initialize the world.
-        """
-        self.time = 0.0
         if not filename:
             return  # mainly for testing - init the world add params later
-        network, params = parse_file(filename)
+        network, rates, params, exps = parse_file(filename)
         self.network = network
-        for key, val in params.iteritems():  # this sets all the rates and flags
+        self.rates = rates
+        self.experiments = exps
+        self.wtime = 0.0
+        self.stop_time = None
+        self.ignore_warn = None
+        self.optimise = None
+
+        # Set all flags
+        for key, val in params.iteritems():
             setattr(self, key, val)
 
-    def possible_events(self, as_list=False):
-        """
-        Get all buses that are ready for departure.
-        Get all buses that are ready for arrival.
+    def initialise(self, rates=None, routes=None):
+        """Initialise the world. Run before every experiment."""
+        self.network.initialise()
 
-        Get all passengers that are ready to board a bus.
-        Get all passengers that are ready to disembark a bus.
-
-        Get a character creation.
-        """
-        buses = list(self.network.get_buses())
-        stops = list(self.network.get_stops())
-        events = {
-            'disembarks': self.disembarking_passengers(buses=buses),
-            'boards': self.boarding_passengers(stops=stops),
-            'departs': self.departure_ready_buses(buses=buses),
-            'arrivals': self.arrival_ready_buses(buses=buses),
-            'new_passengers': [(None, )],
+        # Clear out the analysis dicts
+        tuple_counter = lambda: defaultdict(lambda: (0, 0.0))
+        self.analysis = {
+            'missed_pax': {'stop': Counter(), 'route': Counter()},
+            'avg_pax': tuple_counter(),
+            'avg_qtime': Counter(),
+            'avg_wtime': {'stop': Counter(), 'route': Counter()}
         }
-        if list:
-            for key, val in events.iteritems():
-                events[key] = list(val)
-        return events
 
-    def calculate_total_rate(self, events=None):
-        """
-        Calculates the total rate of all the events.
-        """
-        if not events:
-            events = self.possible_events()
+        if rates:
+            self.rates.update(rates)  # Update experimental rates
 
-        total_rate = 0
-        for key, tups in events.iteritems():
-            try:
-                total_rate += getattr(self, key) * sum(1 for tup in tups)
-            except AttributeError:
-                if key != 'arrivals':
-                    raise
-                total_rate += reduce(lambda t, b: t + b[0].road_rate, tups, 0)
+        if routes:
+            # Update experimental bus counts and capacities
+            for route_id, params in routes.iteritems():
+                route = self.network.routes[route_id]
+                route.bus_count = params.get('bus_count', route.bus_count)
+                route.capacity = params.get('cap', route.capacity)
 
-        return total_rate
+        # new passengers is always possible
+        self.total_rate = self.rates['new_passengers']
 
-    def sample_delay(self, total_rate=None):
-        """
-        Return a sample delay based on total rate.
-        """
-        if not total_rate:
-            total_rate = self.calculate_total_rate()
+        # Buses departing from stops are the only possible events at the start
+        self.event_map = EventMap()
+        for stop in self.network.stops.itervalues():
+            self.event_map.departs.extend(stop.bus_queue)
+            self.total_rate += len(stop.bus_queue) * self.rates['departs']
 
-        mean = 1 / total_rate  # let's hope total_rate won't be 0
+    def record_missed_pax(self, bus):
+        """Update 'Number of Missed Passengers'. Done on per route and
+        per stop basis. Only update the counts for passengers which the bus
+        can satisfy."""
+        for dest_id, count in bus.stop.pax_dests.iteritems():
+            if bus.satisfies(dest_id):
+                route_id = bus.route.route_id
+                stop_id = bus.stop.stop_id
+                self.analysis['missed_pax']['route'][route_id] += count
+                self.analysis['missed_pax']['stop'][stop_id] += count
+
+    def record_avg_pax(self, bus):
+        """Update 'Average Passengers Per Bus Per Road'. Done on per bus basis
+        only since we can reconstruct the route average from that."""
+        count, summa = self.analysis['avg_pax'][bus.bus_id]
+        self.analysis['avg_pax'][bus.bus_id] = count + 1, summa + bus.pax_count
+
+    def record_bus_wait(self, stop):
+        """Update 'Average Bus Queuing Time'. Done on per stop basis. Need to
+        update the stop qtime at the end."""
+        qlength = stop.queue_length
+        time_diff = self.time - stop.qtime
+        self.analysis['avg_qtime'][stop.stop_id] += time_diff * qlength
+        stop.qtime = self.time
+
+    def record_pax_wait(self, bus=None, stop=None):
+        """Update 'Average Waiting Passengers'. Done on per stop and
+        per route basis. We can either use the bus or stop kwarg to get
+        our stop of interest. We update all the routes. Need to update
+        wtime of routes and the stop."""
+        if bus:
+            stop = bus.stop
+        pax_count = stop.pax_count
+        stop_id = stop.stop_id
+        time_diff = self.time - stop.wtime
+        self.analysis['avg_wtime']['stop'][stop_id] += pax_count * time_diff
+        stop.wtime = self.time
+
+        time_diff = self.time - self.wtime
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += pax_count * time_diff
+        self.wtime = self.time
+
+    def update(self, event_type, bus=None, orig=None, dest=None):
+        """Updates the world and the event map based on the last event
+        and its parameters."""
+        rates = self.rates
+        e_map = self.event_map
+
+        if event_type == 'board':
+            self.record_pax_wait(bus=bus)
+
+            bus.board(dest)  # Put the passenger on the bus
+
+            # Other buses may be ready for departure now
+            for other_bus in bus.stop.bus_queue[1:]:
+                if other_bus.satisfies(dest) and not other_bus.full():
+                    if other_bus.departure_ready:
+                        self.total_rate += rates['departs']
+                        e_map.departs.append(other_bus)
+
+            # The person can not board this bus
+            self.total_rate -= rates['board']
+            e_map.board[bus][dest] -= 1
+
+            # This bus could be ready for departure
+            if bus.departure_ready:
+                self.total_rate += rates['departs']
+                e_map.departs.append(bus)
+
+            if bus.full():
+                # No one can board this bus anymore - it's full
+                bus_boards = sum(e_map.board[bus].itervalues())
+                self.total_rate -= bus_boards * rates['board']
+                del(e_map.board[bus])
+
+        elif event_type == 'disembarks':
+            bus.disembark()  # Remove a passenger from the bus
+
+            # Event not available anymore
+            self.total_rate -= rates['disembarks']
+            if bus.disembarks == 0:
+                e_map.disembarks.remove(bus)
+
+            # If the bus was full and it's the head then people can board it
+            if bus.full(offset=1) and bus.is_head:
+                bus_boards = PosCounter(dict(bus.boards))
+                self.total_rate += sum(bus_boards.itervalues()) * rates['board']
+                e_map.board[bus] = bus_boards
+
+            # If no one wants to disembark or embark then it's departure ready
+            if bus.departure_ready:
+                self.total_rate += rates['departs']
+                e_map.departs.append(bus)
+
+        elif event_type == 'departs':
+            # Record passengers who couldn't get on
+            if bus.full():
+                self.record_missed_pax(bus)
+            self.record_avg_pax(bus)
+            self.record_bus_wait(bus.stop)
+
+            # Event is not available anymore
+            self.total_rate -= rates['departs']
+            e_map.departs.remove(bus)
+
+            # If this was the head bus then the next bus can be boarded now
+            if bus.is_head and len(bus.stop.bus_queue) >= 2:
+                new_head = bus.stop.bus_queue[1]
+                bus_boards = PosCounter(dict(new_head.boards))
+                if bus_boards and not new_head.full():
+                    # Some people want to board the bus
+                    self.total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    e_map.board[new_head] = bus_boards
+
+            # Update the world
+            bus.dequeue(self.rates)
+
+            # Bus is on the road now
+            self.total_rate += bus.road_rate
+            e_map.arrivals.append(bus)
+
+        elif event_type == 'arrivals':
+            # Record stop waiting time
+            self.record_bus_wait(bus.stop)
+            bus.stop.bus_count += 1
+
+            # Event not available anymore
+            e_map.arrivals.remove(bus)
+            self.total_rate -= bus.road_rate
+
+            bus.arrive()  # Bus arrives at the stop
+
+            # People on the stop can board the bus if it's not full and is head
+            if bus.is_head and not bus.full():
+                bus_boards = PosCounter(dict(bus.boards))
+                if bus_boards:
+                    # Some people want to board the bus
+                    self.total_rate += sum(bus_boards.itervalues()) * rates['board']
+                    e_map.board[bus] = bus_boards
+
+            if bus.departure_ready:
+                # No one wants to board the bus - it can depart
+                self.total_rate += rates['departs']
+                e_map.departs.append(bus)
+            else:
+                # People want to disembark the bus
+                bus_disembarks = bus.disembarks
+                self.total_rate += bus_disembarks * rates['disembarks']
+                if bus_disembarks and bus not in e_map.disembarks:
+                    e_map.disembarks.append(bus)
+        else:
+            # We're dealing with a new passenger event here
+            self.record_pax_wait(stop=orig)
+
+            # Update the world
+            orig.pax_dests[dest.stop_id] += 1
+
+            if orig.bus_queue:
+                head = orig.bus_queue[0]
+                if head.satisfies(dest.stop_id) and not head.full():
+                    # The person can board the head of the origin stop
+                    self.total_rate += rates['board']
+                    e_map.board[head][dest.stop_id] += 1
+
+                # Buses cannot depart now if they satisfy the destination
+                for bus in orig.bus_queue:
+                    if bus.satisfies(dest.stop_id) and not bus.full():
+                        if bus in e_map.departs:
+                            self.total_rate -= rates['departs']
+                            e_map.departs.remove(bus)
+
+    def choose_event(self):
+        """Chooses an event based on the rates and all possible events.
+        This is basically a weighted choice function that stops after
+        a random number between 0 and total rate is less than 0."""
+        rand = random() * self.total_rate
+
+        for bus, dest, count in self.event_map.gen_board():
+            rand -= count * self.rates['board']
+            if rand < 0:
+                return 'board', dict(dest=dest, bus=bus)
+
+        for bus in self.event_map.disembarks:
+            rand -= bus.disembarks * self.rates['disembarks']
+            if rand < 0:
+                return 'disembarks', dict(bus=bus)
+
+        for bus in self.event_map.departs:
+            rand -= self.rates['departs']
+            if rand < 0:
+                return 'departs', dict(dest=bus.stop, bus=bus)
+
+        for bus in self.event_map.arrivals:
+            rand -= bus.road_rate
+            if rand < 0:
+                return 'arrivals', dict(bus=bus)
+
+        return 'new_passengers', self.network.generate_passenger()
+
+    def sample_delay(self):
+        """Return a delay sampled from an exponential distribution
+        based on the total rate."""
+        mean = 1 / self.total_rate
         return -mean * log10(random())
 
-    def choose_event(self, events=None, total_rate=None):
-        """
-        Probabilistically choose one of the events.
-        """
-        if not events:
-            events = self.possible_events()
-
-        if not total_rate:
-            total_rate = self.calculate_total_rate(events=events)
-
-        rand = random() * total_rate
-
-        for key, tups in events.iteritems():
-            for tup in tups:
-                try:
-                    rand -= getattr(self, key)
-                except AttributeError:
-                    rand -= tup[0].road_rate
-                if rand < 0:
-                    return event_dispatch(self.time, key, *tup)
-
-    def arrival_ready_buses(self, buses=None):
-        """
-        Return buses that are ready for arrival.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        return ((bus, ) for bus in buses if bus.in_motion)
-
-    def departure_ready_buses(self, buses=None):
-        """
-        Return buses that are ready for departure.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        return ((bus, ) for bus in buses if bus.ready_for_departure())
-
-    def disembarking_passengers(self, buses=None):
-        """
-        Returns set of passengers that are at their destination station.
-        """
-        if not buses:
-            buses = self.network.get_buses()
-
-        pax_gens = (bus.disembarking_passengers() for bus in buses if not bus.in_motion)
-        return chain(*pax_gens)
-
-    def boarding_passengers(self, stops=None):
-        """
-        Return passengers that are at their origin station and want to board the bus.
-        """
-        if not stops:
-            stops = self.network.get_stops()
-
-        pax_gens = (stop.boarding_passengers() for stop in stops)
-        return chain(*pax_gens)
-
-    def dequeue_bus(self, bus):
-        """
-        The first bus departs from the queue.
-        """
-        cur_stop = bus.stop
-        cur_stop.bus_queue.remove(bus)
-        next_stop = bus.route.get_next_stop(cur_stop.stop_id)  # set next stop
-        bus.road_rate = self.network.roads[cur_stop.stop_id, next_stop.stop_id]
-        bus.stop = next_stop
-
-    def generate_passenger(self):
-        """
-        Generates a passenger on the network.
-        """
-        orig = choice(self.network.stops.values())
-
-        dests = []
-        for route in self.network.routes.itervalues():
-            try:
-                idx = route.stops.index(orig)
-                dests.extend(route.stops[:idx])
-                dests.extend(route.stops[idx+1:])
-            except ValueError:
-                continue
-
-        dest = choice(dests).stop_id
-        orig = orig.stop_id
-        return orig, Passenger(orig, dest)
-
     def validate(self):
-        """
-        If any of the needed rates was not set the simulation is not valid.
+        """If any of the needed rates was not set the simulation is not valid.
+        Validate the network."""
+        for rate_name in RATES_RX:
+            try:
+                self.rates[rate_name]
+            except KeyError:
+                raise InputError('Rate {} is missing from the input.'.format(rate_name))
+        self.network.validate(self.rates, self.ignore_warn)
 
-        Next, validate the network.
+    def log_stats(self):
+        """Logging the summary statistics"""
+        # Number of Missed Passengers
+        total = 0
+        for route_id in self.network.routes.iterkeys():
+            count = self.analysis['missed_pax']['route'][route_id]
+            total += count  # Use sum of route missed_pax for total
+            log_ans('missed_pax', 'route', route_id, count)
+
+        for stop_id in self.network.stops.iterkeys():
+            count = self.analysis['missed_pax']['stop'][stop_id]
+            log_ans('missed_pax', 'stop', stop_id, count)
+
+        log_ans('missed_pax', 'total', total)
+
+        # Average Passengers Per Bus Per Road
+        total_count = total_sum = 0.0
+        for route_id, route in self.network.routes.iteritems():
+            route_count = route_sum = 0
+            for bus_no in xrange(route.bus_count):
+                # construct bus_id dynamically because we don't
+                # hold a reference to routes' buses
+                bus_id = '{}.{}'.format(route_id, bus_no)
+                count, summa = self.analysis['avg_pax'][bus_id]
+                # Use sum of bus avg_pax for the route
+                route_count += count
+                route_sum += summa
+                avg = 0 if summa == 0 else summa / count
+                log_ans('avg_pax', 'bus', bus_id, avg)
+
+            # Use sum of route avg_pax for the total
+            total_count += route_count
+            total_sum += route_sum
+            route_avg = 0 if route_sum == 0 else route_sum / route_count
+            log_ans('avg_pax', 'route', route_id, route_avg)
+
+        total_avg = 0 if total_sum == 0 else total_sum / total_count
+        log_ans('avg_pax', 'total', total_avg)
+
+        # Average Bus Queuing Time
+        total_sum = total_count = 0.0
+        for stop_id, stop in self.network.stops.iteritems():
+            summa = self.analysis['avg_qtime'][stop_id]
+            # Use sum of stop avg_qtime for the total
+            total_sum += summa
+            total_count += stop.bus_count
+            avg = 0 if summa == 0 else summa / stop.bus_count
+            log_ans('avg_qtime', 'stop', stop_id,  avg)
+
+        total_avg = 0 if total_sum == 0 else total_sum / total_count
+        log_ans('avg_qtime', 'total', total_avg)
+
+        # Average Waiting Passengers
+        total_sum = 0.0
+        for route_id in self.network.routes.iterkeys():
+            summa = self.analysis['avg_wtime']['route'][route_id]
+            total_sum += summa  # Use sum of route avg_wtime for total
+            avg = 0 if summa == 0 else summa / self.stop_time
+            log_ans('avg_wtime', 'route', route_id, avg)
+
+        for stop_id in self.network.stops.iterkeys():
+            summa = self.analysis['avg_wtime']['stop'][stop_id]
+            avg = 0 if summa == 0 else summa / self.stop_time
+            log_ans('avg_wtime', 'stop', stop_id, avg)
+
+        total_avg = 0 if total_sum == 0 else total_sum / self.stop_time
+        log_ans('avg_wtime', 'total', total_avg)
+
+        print('')
+
+    def log_experiment(self, routes, rates):
         """
-        if any([
-            self.boards is None,
-            self.disembarks is None,
-            self.departs is None,
-            self.new_passengers is None,
-            self.stop_time is None
-        ]):
-            raise Exception("The simulation is not valid.")
-        self.network.validate()
+        Log the experimental parameters of routes and experimental rates.
+            routes: <route_id>: {bus_count: <bus_count>, cap: <capacity>}
+            rates: <rate_name or dest,orig>: <rate>"""
+        for route_id, params in routes.iteritems():
+            route = self.network.routes[route_id]
+            print(EXPERIMENTS_PARAMS['route'].format(
+                route_id=route_id,
+                stops=' '.join(str(stop.stop_id) for stop in route.stops),
+                bus_count=params.get('bus_count', route.bus_count),
+                cap=params.get('cap', route.capacity)
+            ))
+        for name, rate in rates.iteritems():
+            # tuple -> road | float -> normal rate
+            name = EXPERIMENTS_PARAMS['road'].format(*name) if isinstance(name, tuple) else name
+            print(EXPERIMENTS_PARAMS['rate'].format(name=name, rate=rate))
+
+    def cleanup(self):
+        """Run after every run of the simulation. Ensures that the analysis
+        is correct by adding whatever happened between last relevant event
+        and the stop time to analysis."""
+        for stop_id, stop in self.network.stops.iteritems():
+            # Add remaining queueing buses to stops
+            time_diff = self.stop_time - stop.qtime
+            queueing_buses = stop.queue_length
+            self.analysis['avg_qtime'][stop_id] += time_diff * queueing_buses
+            # Add remamining waiting passengers to stops
+            time_diff = self.stop_time - stop.wtime
+            self.analysis['avg_wtime']['stop'][stop_id] += time_diff * stop.pax_count
+
+        time_diff = self.stop_time - self.wtime
+        # Add remamining waiting passengers to routes
+        for route_id, route in self.network.routes.iteritems():
+            pax_count = sum(s.pax_count for s in route.stops)
+            self.analysis['avg_wtime']['route'][route_id] += time_diff * pax_count
+
+    def experiment(self):
+        """Run all experiments. If the optimise parameters flag is set,
+        only print the most optimal one."""
+        route_combs = {}
+        # Get all combinations of capacities and bus counts within a route
+        for route_id, comb in self.experiments['routes'].iteritems():
+            route_combs[route_id] = (dict(izip(comb, x)) for x in product(*comb.itervalues()))
+
+        combs = {}
+        combs['routes'] = (dict(izip(route_combs, x)) for x in product(*route_combs.itervalues()))
+
+        rates_combs = []
+        # Get all combinations of all rates
+        for comb in product(*self.experiments['rates'].itervalues()):
+            rates_combs.append(dict(izip(self.experiments['rates'], comb)))
+
+        if rates_combs:
+            combs['rates'] = rates_combs
+
+        # These variables determine the best set of parameters
+        best_exp = None
+        best_ans = None
+        best_cost = maxint
+
+        # Run for of all possible routes and rates combinations
+        for exp_params in (dict(izip(combs, x)) for x in product(*combs.itervalues())):
+            if not self.optimise:
+                self.log_experiment(**exp_params)
+            self.initialise(**exp_params)
+            self.run(silent=True)
+            self.cleanup()
+            if not self.optimise:
+                self.log_stats()
+            else:
+                cost = self.get_cost(exp_params)
+                if cost < best_cost:
+                    best_cost = cost
+                    best_exp = dict(exp_params)
+                    best_ans = dict(self.analysis)
+                    if cost == 0:
+                        break  # 0 is the best possible cost
+
+        if self.optimise:
+            self.log_experiment(**best_exp)
+            self.analysis = best_ans
+            self.log_stats()
 
     def start(self):
-        """
-        Validate and then start the run loop.
-        """
-        self.run()
+        """Validate and then start the run loop or experiment."""
+        self.validate()
+        if self.experimental_mode:
+            self.experiment()
+        else:
+            self.initialise()
+            self.run()
+            self.cleanup()
+            self.log_stats()
 
-    def run(self):
-        """
-        Run the simulation until world explodes.
-        """
+    def run(self, silent=False):
+        """Run the simulation while time is less than stop time."""
+        self.time = 0.0
         while self.time <= self.stop_time:
-            events = self.possible_events(as_list=True)
-            total_rate = self.calculate_total_rate(events=events)
-            delay = self.sample_delay(total_rate=total_rate)
-            event = self.choose_event(events, total_rate=total_rate)
-            event.update_world(self)
-            log(event)
+            delay = self.sample_delay()
+            event_type, kwargs = self.choose_event()
+            self.update(event_type, **kwargs)
+            if not silent:
+                log(event_type, time=self.time, **kwargs)
             self.time += delay
+
+    def get_cost(self, exp_params):
+        """Returns the total costs of given experiment parameters. Based on
+        the Number of Missed Passengers."""
+        total = 0
+        for route_id in self.network.routes.iterkeys():
+            total += self.analysis['missed_pax']['route'][route_id]
+
+        # sum up all the experimentation parameters
+        params_sum = sum(rate for rate in exp_params['rates'].itervalues())
+        for route in exp_params['routes'].itervalues():
+            params_sum += route.get('cap', 0)
+            params_sum += route.get('bus_count', 0)
+
+        return params_sum * total
+
+
+def log_ans(ans_type, key, *args):
+    print(ANALYSIS[ans_type][key].format(*args))

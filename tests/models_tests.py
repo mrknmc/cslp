@@ -1,5 +1,7 @@
 import unittest
+from unittest import skip
 
+from simulator.events import PosCounter
 from simulator.models import *
 
 
@@ -19,85 +21,54 @@ class TestBus(unittest.TestCase):
         """
         Test that the bus id is set correctly.
         """
-        stop = self.stops[0]
-        bus = Bus(self.route, 0, 20, stop, None)
-        self.assertEqual(bus.uid, '4.0')
+        bus = Bus(self.route, 0)
+        self.assertEqual(bus.bus_id, '4.0')
 
-    def test_ready_for_departure(self):
+    def test_departure_ready(self):
         """
-
         """
-        stop = self.stops[0]
-        bus = Bus(1, None, 20, stop, None)
+        bus = Bus(self.route, 0)
 
-        bus.passengers = [Passenger(4, 5)] * 20
-        self.assertTrue(bus.ready_for_departure())
+        bus.pax_dests = PosCounter({5: 20})
+        self.assertTrue(bus.departure_ready)
 
-    def test_disembarking_passengers(self):
+    def test_disembarks(self):
         """
         Test that there are passengers who want to disembark.
         """
-        bus1 = Bus(self.route, 4, 20, self.stops[0], None)
-        bus2 = Bus(self.route, 3, 20, self.stops[1], None)
+        bus1 = Bus(self.route, 4)
+        bus2 = Bus(self.route, 3)
 
-        passengers = [
-            Passenger(4, 3),
-            Passenger(2, 7),
-            Passenger(4, 3),
-            Passenger(4, 9),
-            Passenger(6, 1),
-        ]
+        pax_dests = PosCounter({
+            3: 2,
+            7: 1,
+            9: 1,
+            1: 1
+        })
 
-        bus1.passengers = passengers
-        bus2.passengers = passengers
+        bus1.pax_dests = pax_dests
+        bus2.pax_dests = pax_dests
 
-        exit_pax = list(bus1.disembarking_passengers())
+        exit_pax = bus1.disembarks
+        self.assertEqual(exit_pax, 2)
 
-        self.assertTrue(bus1.passengers[0], bus1 in exit_pax)
-        self.assertTrue(bus1.passengers[2], bus2 in exit_pax)
-        self.assertEqual(len(exit_pax), 2)
-
-        exit_pax = list(bus2.disembarking_passengers())
-        self.assertEqual(exit_pax, [])
+        exit_pax = bus2.disembarks
+        self.assertEqual(exit_pax, 0)
 
     def test_full_capacity(self):
         """
         Test that the capacity is full.
         """
-        stop = self.stops[0]
-        bus = Bus(self.route, 4, 20, stop, None)
+        bus = Bus(self.route, 4)
 
-        bus.passengers = [Passenger(4, 5)] * 19
-        self.assertFalse(bus.full_capacity())
+        bus.pax_dests = {5: 19}
+        self.assertFalse(bus.full())
 
-        bus.passengers.append(Passenger(4, 5))
-        self.assertTrue(bus.full_capacity())
-
-    def test_no_disembarks(self):
-        """
-        Test that no one wants to disembark.
-        """
-        bus1 = Bus(self.route, 4, 20, self.stops[0], None)
-        bus2 = Bus(self.route, 4, 20, self.stops[1], None)
-
-        passengers = [
-            Passenger(4, 3),
-            Passenger(2, 7),
-            Passenger(4, 3),
-            Passenger(4, 9),
-            Passenger(6, 1),
-        ]
-
-        bus1.passengers = passengers
-        bus2.passengers = passengers
-
-        disembarks = bus1.no_disembarks()
-        self.assertEqual(disembarks, False)
-
-        disembarks = bus2.no_disembarks()
-        self.assertEqual(disembarks, True)
+        bus.pax_dests[5] += 1
+        self.assertTrue(bus.full())
 
 
+@skip
 class TestRoute(unittest.TestCase):
 
     def setUp(self):
