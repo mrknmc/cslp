@@ -414,6 +414,8 @@ class World(object):
                     best_cost = cost
                     best_exp = dict(exp_params)
                     best_ans = dict(self.analysis)
+                    if cost == 0:
+                        break
 
         if self.optimise:
             self.log_experiment(**best_exp)
@@ -446,9 +448,9 @@ class World(object):
 
     def get_cost(self, exp_params):
         """Returns the total costs of given experiment parameters."""
-        total_count = 0
-        for route_id, pax_count in self.analysis['avg_wtime']['route'].iteritems():
-            total_count += pax_count
+        total = 0
+        for route_id in self.network.routes.iterkeys():
+            total += self.analysis['missed_pax']['route'][route_id]
 
         params_sum = sum(rate for rate in exp_params['rates'].itervalues())
 
@@ -456,7 +458,7 @@ class World(object):
             params_sum += route.get('cap', 0)
             params_sum += route.get('bus_count', 0)
 
-        return params_sum * (total_count / self.stop_time)
+        return params_sum * total
 
 
 def log_ans(ans_type, key, *args):
