@@ -6,17 +6,19 @@ Python is probably my favourite language - I like its syntax. Also, since I had 
 
 ### Changes from the version submitted on the first deadline
 You may notice that I have changed quite a lot of code from the first deadline. I have decided to rewrite the way I compute all the possible events and the total rate. Instead of recomputing these every step of the simulation, I update them dynamically depending on the last chosen event.
-This was kind of tricky since there are many possibilities for each event and I really hope I covered all of them. In the end it was actually quite fun and I am glad I did it. The profiling of this change is detailed in the Optimisations part below.
+This was kind of tricky since there are many possibilities for each event and I really hope I covered all of them. In the end it was actually quite fun and I am glad I did it. The profiling of this change is detailed in the *Optimisations* part.
 
 Furthermore, I now only allow passengers to board the first bus in the bus queue (as per the requirements) as opposed to all buses in the queue like in the first version.
 
 I have also added support for analysis, experimentation, validation and optimisation as per the requirements.
 
+It may seem that World is a [God object](http://en.wikipedia.org/wiki/God_object) but it seemed like a better idea than passing around a bunch of parameters with every function call (see the *funct* branch) for my attempt to make the simulation more functional which was abandoned.
+
 ### Running the simulator
 To run the simulator on DiCE run `python2.7 run.py <inputfile>` in the simulator directory.
 
 ### Running the unit tests
-Run any of the test files in the tests directory like so `python2.7 tests/models_tests.py`. Or run them all with a bash script `./tests/all`. The `update_tests.py` and `analysis_tests.py` are probably not really unit tests but they work pretty well.
+Run any of the test files in the tests directory like so `python2.7 -m tests/models_tests`. Or run them all with a bash script `./tests/all`. The `update_tests.py` and `analysis_tests.py` are probably not really unit tests but they work pretty well.
 
 ### Optional arguments
 You can supply the following arguments:
@@ -24,7 +26,7 @@ You can supply the following arguments:
   2. output file (optional) - `python2.7 run.py tests/test1 out.txt` will output to file out.txt
 
 ### Optimisations
-Updating possible events dynamically has maybe decreased the maintainability and difficulty of the code but I have benchmarked both versions with the `time` command on `student.compute` and the results are pretty impressive. The average running times over 10 runs are listed in the table below:
+Updating possible events dynamically has maybe decreased the maintainability and difficulty of the code but I have benchmarked both versions with the `time` command on `student.compute` and the results are pretty impressive. The average running times over 10 runs are listed in the table below (best viewed as html):
 <table>
 <tr><th>Test file</th><th>New version</th><th>Old version</th><th>Speedup</th></tr>
 <tr><td>test2</td><td>2.066</td><td>9.194</td><td>4.45x</td></tr>
@@ -34,7 +36,7 @@ Updating possible events dynamically has maybe decreased the maintainability and
 As we can see the new running time is up to about 5 times faster than the old one. Given that I tried to properly document the code, I think this optimisation was very well worth it.
 
 ### Validation
-Unit tests for validation are in the file `validation_tests.py`.
+Unit tests for validation are in the file `validation_tests.py`. These tests detail what inputs create warnings and errors. More information is found in the docstrings and comments of the `validate` methods of the world and network and the `parse_lines` function of the parser module.
 
 **Warnings**
 I generate a warning on the following occasions since they don't affect the simulation in a harmful way:
@@ -57,7 +59,10 @@ I generate an error on the following occasions:
   11. Stop time is zero
   12. Number of buses or capacity on any route is zero.
 
-Some of these errors could be considered warnings, such as specifing a road rate twice (just use either one), but I think it's more beneficial to flag them as errors so the user of the system can fix them. I have also decided to not allow having a route with just one stop or having a route with the same stop twice in a row. Moreover, I am not allowing buses with 0 capacity, routes with 0 buses or stop time being 0.
+Some of these errors could be considered warnings, such as specifing a road rate twice (just use either one), but I think it's more beneficial to flag them as errors so the user of the system can fix them (they may have expected the other road rate to be used). I have also decided to not allow having a route with just one stop or having a route with the same stop twice in a row. Moreover, I am not allowing buses with 0 capacity, routes with 0 buses or stop time being 0.
+
+### Third party code
+I have made use of the [termcolor library](https://pypi.python.org/pypi/termcolor) for the `color_log` function in the events package. In a nutshell, it gives you colored output in the terminal making it easier to distinguish between different event types in your output. This library has MIT license and is located in `lib/termcolor.py`.
 
 ### Conclusion
 In conclusion, I thank you for this assignment - it was quite fun to finally do some actual coding. At first I was aiming for the early submission bus since I was working part-time and 3rd year is generally pretty busy I thought I'd rather do it properly than rush through it and make mistakes. Don't get me wrong, I still think that there are improvements I could make to my simulator (as always) but I think I definitely spent at least the recommended 100 hours on this.
