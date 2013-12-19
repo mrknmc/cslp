@@ -404,7 +404,7 @@ class World(object):
         route_combs = {}
         # Get all combinations of capacities and bus counts within a route
         for route_id, comb in self.experiments['routes'].iteritems():
-            route_combs[route_id] = (dict(izip(comb, x)) for x in product(*comb.itervalues()))
+            route_combs[route_id] = [dict(zip(comb, x)) for x in product(*comb.itervalues())]
 
         combs = {}
         combs['routes'] = (dict(izip(route_combs, x)) for x in product(*route_combs.itervalues()))
