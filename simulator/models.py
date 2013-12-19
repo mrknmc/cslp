@@ -2,7 +2,6 @@ from itertools import cycle, chain, izip
 from random import choice
 
 from simulator.events import PosCounter
-from simulator.formats import RATES_RX
 from simulator.errors import InputError, InputWarning
 
 class Bus(object):
@@ -195,6 +194,11 @@ class Network(object):
     def initialise(self):
         """Initialise the network. Clear out all the bus stops from buses and
         passengers and add buses to stops."""
+        for stop in self.stops.itervalues():
+             stop.bus_queue = []
+             stop.qtime = 0.0
+             stop.pax_dests = PosCounter()
+
         for route in self.routes.itervalues():
             for bus_id, stop in izip(xrange(route.bus_count), cycle(route.stops)):
                 bus = Bus(route, bus_id)

@@ -4,7 +4,7 @@ from itertools import product, izip
 from math import log10
 from sys import maxint
 
-from simulator.errors import SimulationException, InputError
+from simulator.errors import InputError
 from simulator.events import log_event as log, EventMap, PosCounter
 from simulator.formats import ANALYSIS, EXPERIMENTS_PARAMS, RATES_RX
 from simulator.parser import parse_file
@@ -422,17 +422,14 @@ class World(object):
 
     def start(self):
         """Validate and then start the run loop."""
-        try:
-            self.validate()
-            if self.experimental_mode:
-                self.experiment()
-            else:
-                self.initialise()
-                self.run()
-                self.cleanup()
-                self.log_stats()
-        except SimulationException as e:
-            print e
+        self.validate()
+        if self.experimental_mode:
+            self.experiment()
+        else:
+            self.initialise()
+            self.run()
+            self.cleanup()
+            self.log_stats()
 
     def run(self, silent=False):
         """
@@ -449,10 +446,9 @@ class World(object):
 
     def get_cost(self, exp_params):
         """Returns the total costs of given experiment parameters."""
-        total_count = total_sum = 0.0
-        for route_id, (count, summa) in self.analysis['avg_wtime']['route'].iteritems():
-            total_count += count
-            total_sum += summa
+        total_count = 0
+        for route_id, pax_count in self.analysis['avg_wtime']['route'].iteritems():
+            total_count += pax_count
 
         params_sum = sum(rate for rate in exp_params['rates'].itervalues())
 
@@ -460,7 +456,7 @@ class World(object):
             params_sum += route.get('cap', 0)
             params_sum += route.get('bus_count', 0)
 
-        return params_sum * (total_sum / total_count)
+        return params_sum * (total_count / self.stop_time)
 
 
 def log_ans(ans_type, key, *args):
