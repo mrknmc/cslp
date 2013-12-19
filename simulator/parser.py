@@ -10,7 +10,7 @@ from simulator.formats import NEWLINE_COMMENT_RX, ROUTE_RX, ROUTE_TYPES, \
 
 
 def parse_lines(file, filename):
-    """Parses an iterable of lines (with newlines at the end).
+    """Parses an iterable of lines (possibly with newlines at the end).
     Returns the network, rates, params and experiments from the input file."""
     network = Network()
     params = {'optimise': False, 'ignore_warn': False, 'experimental_mode': False}
@@ -21,7 +21,6 @@ def parse_lines(file, filename):
         'rates': {}
     }
     for line_no, line in enumerate(file, start=1):
-
         # ignore empty lines and comments
         if rxmatch(NEWLINE_COMMENT_RX, line):
             continue

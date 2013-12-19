@@ -5,7 +5,13 @@ from simulator.events import PosCounter
 from simulator.errors import InputError, InputWarning
 
 class Bus(object):
-    """Model representing a bus object of the simulation."""
+    """
+    Model representing a bus object of the simulation.
+        route - the route of this bus
+        bus_id - unique id of this bus
+        pax_dests - dictionary with destinations as keys and counts as values
+        _cur_stop - the stop of the route the bus is on
+        road_rate - rate of the road the bus is on"""
 
     def __init__(self, route, bus_id):
         self.route = route
@@ -53,7 +59,6 @@ class Bus(object):
             count = self.stop.pax_dests[stop_id]
             if count > 0:
                 yield stop_id, count
-        # return ifilter(lambda i: self.satisfies(i[0]) and i[1] != 0, self.stop.pax_dests.iteritems())
 
     @property
     def next_stop(self):
@@ -122,7 +127,12 @@ class Bus(object):
 
 
 class Route(object):
-    """Model representing a route object of the simulation."""
+    """
+    Model representing a route object of the simulation.
+        route_id - unique id of this route
+        stops - list of stops of this route
+        bus_count - number of buses on this route
+        capacity - capacity of buses on this route"""
 
     def __init__(self, route_id, stops, bus_count, capacity):
         self.route_id = route_id
@@ -145,7 +155,14 @@ class Route(object):
 
 
 class Stop(object):
-    """Model representing a stop object of the simulation."""
+    """
+    Model representing a stop object of the simulation.
+        stop_id - unique id of this stop
+        bus_queue - buses on the stop
+        pax_dests - dictionary with destinations as keys and counts as values
+        qtime - time when the average queueing buses stat was last updated
+        bus_count - number of bus visists (arrival-departs) on this stop
+        wtime - time when the average waiting passengers was last updated"""
 
     def __init__(self, stop_id):
         self.stop_id = stop_id
@@ -184,10 +201,11 @@ class Stop(object):
 
 
 class Network(object):
-    """Model representing a network object of the simulation."""
+    """Model representing a network object of the simulation.
+        routes - dict with route_id as key route as value
+        stops - dict with stop_id as key stop as value"""
 
     def __init__(self):
-        """Represent everything using sets as there is no reason for duplicates."""
         self.routes = {}  # <route_id> : <route>
         self.stops = {}  # <stop_id> : <stop>
 
@@ -239,7 +257,8 @@ class Network(object):
         return dict(orig=orig, dest=dest)
 
     def validate(self, rates, ignore_warn):
-        """Validate the network"""
+        """Validate the network. The exception messages describe what we
+        are checking."""
         for route_id, route in self.routes.iteritems():
             stop_ids = [stop.stop_id for stop in route.stops]
             first_last = (stop_ids[-1], stop_ids[0])
