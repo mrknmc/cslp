@@ -2,6 +2,7 @@ import unittest
 
 from simulator.parser import parse_lines
 from simulator.models import *
+from tests.fake import FakeWorld
 
 
 class TestNetworkValidation(unittest.TestCase):
@@ -27,7 +28,7 @@ class TestNetworkValidation(unittest.TestCase):
 
     def test_missing_event_rate_is_error(self):
         """Verifies that when there is no rate for events we raise an error."""
-        input_str = (
+        input_str = '\n'.join((
             'route 1 stops 1 2 3 buses 3 capacity 10',
             'road 1 2 0.4',
             'road 2 3 0.5',
@@ -36,10 +37,10 @@ class TestNetworkValidation(unittest.TestCase):
             'disembarks 0.6',
             'departs 0.5',
             'stop time 80',
-        )
-        network, rates, params, experiments = parse_lines(input_str, 'test')
+        ))
+        world = FakeWorld(input_str)
         with self.assertRaises(InputError):
-            network.validate(rates, params)
+            world.validate()
 
     def test_missing_stop_time_is_error(self):
         """Verifies that when there is no stop time parameter we raise an error."""
@@ -53,22 +54,22 @@ class TestNetworkValidation(unittest.TestCase):
             'departs 0.5',
             'new passengers 5',
             )
-        network, rates, params, experiments = parse_lines(input_str, 'test')
         with self.assertRaises(InputError):
-            network.validate(rates, params)
+            parse_lines(input_str, 'test')
 
     def test_road_rate_for_no_route_is_warn(self):
         """Verifies that when we have a road rate for two stops but no
         route for them we have a warning."""
         input_str = (
             'route 1 stops 1 2 5 buses 3 capacity 10',
-            'route 1 stops 1 4 buses 3 capacity 10',
+            'route 2 stops 1 4 buses 3 capacity 10',
             'road 1 2 0.3',
             'road 1 4 0.3',
             'road 4 1 0.3',
             'road 2 1 0.5',
             'road 2 5 0.8',
             'road 4 5 0.8',
+            'road 5 1 0.8',
             'board 0.5',
             'disembarks 0.6',
             'departs 0.5',
@@ -77,9 +78,9 @@ class TestNetworkValidation(unittest.TestCase):
         )
         network, rates, params, experiments = parse_lines(input_str, 'test')
         with self.assertRaises(InputWarning):
-            network.validate(rates, params)
+            network.validate(rates, params['ignore_warn'])
 
-    def test_road_rate_for_no_route_is_warn(self):
+    def test_road_rate_for_no_route2_is_warn(self):
         """Verifies that when we have a road rate for two stops but
         at least one of them is not on any route we raise a warning."""
         input_str = (
@@ -95,7 +96,7 @@ class TestNetworkValidation(unittest.TestCase):
         )
         network, rates, params, experiments = parse_lines(input_str, 'test')
         with self.assertRaises(InputWarning):
-            network.validate(rates, params)
+            network.validate(rates, params['ignore_warn'])
 
     def test_route_with_same_stop_consecutively_is_error(self):
         """Verifies that when we have a route with the same stop twice
