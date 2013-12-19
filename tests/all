@@ -1,0 +1,6 @@
+#!/bin/bash
+python2.7 ./tests/analysis_tests.py
+python2.7 ./tests/models_tests.py
+python2.7 ./tests/parser_tests.py
+python2.7 ./tests/update_tests.py
+python2.7 ./tests/validation_tests.py
