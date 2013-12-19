@@ -1,0 +1,8 @@
+route 1 stops 1 2 buses 2 capacity 10
+road 1 2 1.0
+road 2 1 1.0
+board 3
+disembarks 1
+departs 2
+new passengers 4
+stop time 1
