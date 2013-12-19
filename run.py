@@ -12,9 +12,11 @@ def main(argv):
     if len(argv) > 1:
         output_f = os.path.join(cwd, argv[1])
         sys.stdout = open(output_f, 'w')
-
-    world = World(input_f)
-    world.start()
+    try:
+        world = World(input_f)
+        world.start()
+    except IOError:
+        print('Input file does not exist!')
 
 
 if __name__ == '__main__':
