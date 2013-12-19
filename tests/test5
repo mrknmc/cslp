@@ -24,5 +24,5 @@ board 10
 disembarks 10
 departs 0.3
 new passengers 8
-stop time 10000
-# ignore warnings
+stop time 2000
+ignore warnings
