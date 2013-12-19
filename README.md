@@ -1,18 +1,19 @@
 # Bus Network Simulator
+This is my implementation of the bus network simulator in Python. The branch *submit* is the code that I am submitting for this assignment. The branch *master* is my main development branch. At this point they are the same. The branch *deadline1* is the code from my submission for the first deadline.
 
 ### Programming language
 I picked Python as my programming language because it's nice. I have developed for version 2.7 since I am making use of some features only available from that version such as Counter from the collections library.
 Python is probably my favourite language - I like its syntax. Also, since I had used it before I did not have to learn a new language for the practical which gave me more time to focus on the actual implementation. That being said, I would like to rewrite the practical in a functional language such as Haskell or OCaml one day.
 
 ### Changes from the version submitted on the first deadline
-You may notice that I have changed quite a lot of code from the first deadline. I have decided to rewrite the way I compute all the possible events and the total rate. Instead of recomputing these every step of the simulation, I update them dynamically depending on the last chosen event.
+You may notice that I have changed quite a lot of code from the first deadline (branch deadline1). I have decided to rewrite the way I compute all the possible events and the total rate. Instead of recomputing these every step of the simulation, I update them dynamically depending on the last chosen event.
 This was kind of tricky since there are many possibilities for each event and I really hope I covered all of them. In the end it was actually quite fun and I am glad I did it. The profiling of this change is detailed in the *Optimisations* part.
 
 Furthermore, I now only allow passengers to board the first bus in the bus queue (as per the requirements) as opposed to all buses in the queue like in the first version.
 
 I have also added support for analysis, experimentation, validation and optimisation as per the requirements.
 
-It may seem that World is a [God object](http://en.wikipedia.org/wiki/God_object) but it seemed like a better idea than passing around a bunch of parameters with every function call (see the *funct* branch) for my attempt to make the simulation more functional which was abandoned.
+It may seem that World is a [God object](http://en.wikipedia.org/wiki/God_object) but it seemed like a better idea than passing around a bunch of parameters with every function call (see the *funct* branch in my git log) for my attempt to make the simulation more functional which was abandoned.
 
 ### Running the simulator
 To run the simulator on DiCE run `python2.7 run.py <inputfile>` in the simulator directory.
